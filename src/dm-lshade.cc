@@ -6,6 +6,7 @@
 */
 
 #include"de.h"
+#include <algorithm>
 
 DMLSHADE::DMLSHADE(int max_elite_size, int number_of_patterns, int mining_generation_step)
 {
@@ -20,11 +21,6 @@ Fitness DMLSHADE::run()
     cout << scientific << setprecision(8);
     initializeParameters();
     setSHADEParameters();
-
-    // cout << pop_size << endl;
-    // cout << arc_size << endl;
-    // cout << p_best_rate << endl;
-    // cout << memory_size << endl;
 
     vector<Individual> pop;
     vector<Fitness> fitness(pop_size, 0);
@@ -129,6 +125,7 @@ Fitness DMLSHADE::run()
             temp_fit[i] = fitness[i];
         sortIndexWithQuickSort(&temp_fit[0], 0, pop_size - 1, sorted_array);
 
+        // Mining steps
         updateElite(pop, fitness, sorted_array);
         if (generation % mining_generation_step == 0){
           patterns = minePatterns();
@@ -352,6 +349,15 @@ void DMLSHADE::operateCurrentToPBest1BinWithArchive(const vector<Individual> &po
 
 void DMLSHADE::updateElite(const vector<Individual> &pop, vector<Fitness> &fitness, int* sorted_indexes)
 {
+    for (size_t i = 0; i < pop.size(); i++) 
+        elite.push_back({ pop[sorted_indexes[i]], fitness[sorted_indexes[i]] });
+    
+    std::sort(elite.begin(), elite.end(), [](tuple<Individual, double> el1, tuple<Individual, double> el2) {
+      return get<1>(el1) < get<1>(el2);
+    });
+    
+    if (elite.size() > max_elite_size)
+        elite.erase(elite.begin() + max_elite_size, elite.end());
 }
 
 vector<pattern> DMLSHADE::minePatterns()
