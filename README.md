@@ -4,7 +4,7 @@ This repository present the code of a proposal of hybridization of the evolution
 
 The implementation was written above the L-SHADE code of Tanabe and Fukunaga [[1](#references)], available [HERE](https://ryojitanabe.github.io/code/LSHADE1.0.1_CEC2014.zip).
 
-In our implementation L-SHADE was hybridized with two Clustering Methods (K-means [[2](#references)] and X-means [[3](#references)]). But, we pretend try the hybridization with other DM methods.
+In our implementation L-SHADE was hybridized with two Clustering Methods (K-means [[2](#references)] and X-means [[3](#references)]). But, we pretend try the hybridization with other DM methods. The implementation of clustering algorithms used is from the [Pyclustering Library](https://github.com/annoviko/pyclustering).
 
 ## References
 
