@@ -133,7 +133,7 @@ public:
   void operateCurrentToPBest1BinWithArchive(const vector<Individual> &pop, Individual child, int &target, int &p_best_individual, variable &scaling_factor, variable &cross_rate, const vector<Individual> &archive, int &arc_ind_count);
 
   void updateElite(const vector<Individual> &pop, vector<Fitness> &fitness, int* sorted_indexes);
-  vector<pattern> minePatterns();
+  vector<map<int, double>> minePatterns();
   
   int arc_size;
   double arc_rate;

@@ -35,11 +35,16 @@ int main(int argc, char **argv) {
 
   //L-SHADE parameters
   g_pop_size = (int)round(g_problem_size * 18);
-  g_memory_size = 5;
-  g_arc_rate = 1.4;
+  g_memory_size = 6;
+  g_arc_rate = 2.6;
   g_p_best_rate = 0.11;
 
- for (int i = 0; i < 30; i++) {
+  // DM-L-SHADE parameters
+  double elite_rate = 0.1;
+  double clusters_rate = 0.1468;
+  int mining_generation_step = 168;
+
+  for (int i = 0; i < 30; i++) {
     g_function_number = i + 1;
     cout << "\n-------------------------------------------------------" << endl;
     cout << "Function = " << g_function_number << ", Dimension size = " << g_problem_size << "\n" << endl;
@@ -49,7 +54,10 @@ int main(int argc, char **argv) {
     Fitness std_bsf_fitness = 0;
 
     for (int j = 0; j < num_runs; j++) { 
-      searchAlgorithm *alg = new LSHADE();
+      //searchAlgorithm *alg = new LSHADE();
+      int max_elite_size = std::round(elite_rate * g_pop_size);
+      int number_of_patterns = std::round(clusters_rate * elite_rate);
+      searchAlgorithm *alg = new DMLSHADE(max_elite_size, number_of_patterns, mining_generation_step);
       bsf_fitness_array[j] = alg->run();
       cout << j + 1 << "th run, " << "error value = " << bsf_fitness_array[j] << endl;
     }
