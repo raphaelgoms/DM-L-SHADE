@@ -1,8 +1,8 @@
 /*
-  L-SHADE implemented by C++ for Special Session & Competition on Real-Parameter Single Objective Optimization at CEC-2014
+  DM-L-SHADE implemented by C++
 
-  Version: 1.1   Date: 9/Jun/2014
-  Written by Ryoji Tanabe (rt.ryoji.tanabe [at] gmail.com)
+  Version: 1.0   Date: 30/Dez/2024
+  Written by Raphael Gomes Santos (raphaelgoms [at] gmail.com)
 */
 
 #include"de.h"
