@@ -7,6 +7,7 @@
 
 #include"de.h"
 #include <algorithm>
+#include <pyclustering/cluster/kmeans.hpp>
 
 DMLSHADE::DMLSHADE(int max_elite_size, int number_of_patterns, int mining_generation_step)
 {
@@ -349,9 +350,9 @@ void DMLSHADE::operateCurrentToPBest1BinWithArchive(const vector<Individual> &po
 
 void DMLSHADE::updateElite(const vector<Individual> &pop, vector<Fitness> &fitness, int* sorted_indexes)
 {
-    for (size_t i = 0; i < pop.size(); i++) 
+    for (size_t i = 0; i < pop.size(); i++) {
         elite.push_back({ pop[sorted_indexes[i]], fitness[sorted_indexes[i]] });
-    
+    }
     std::sort(elite.begin(), elite.end(), [](tuple<Individual, double> el1, tuple<Individual, double> el2) {
       return get<1>(el1) < get<1>(el2);
     });
@@ -362,6 +363,12 @@ void DMLSHADE::updateElite(const vector<Individual> &pop, vector<Fitness> &fitne
 
 vector<pattern> DMLSHADE::minePatterns()
 {
+    vector<vector<double>> data;
+    for (size_t i = 0; i < elite.size(); i++)
+        data.push_back(vector<double>(get<0>(elite[i]), get<0>(elite[i]) + problem_size));
+    
+    centroids = kmeans(number_of_patterns);
+    
     return vector<pattern>();
 }
 
