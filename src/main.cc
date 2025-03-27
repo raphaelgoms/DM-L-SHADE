@@ -44,7 +44,7 @@ int main(int argc, char **argv) {
   double clusters_rate = 0.1468;
   int mining_generation_step = 168;
 
-  for (int i = 0; i < 30; i++) {
+  for (int i = 0; i <= 30; i++) {
     g_function_number = i + 1;
     cout << "\n-------------------------------------------------------" << endl;
     cout << "Function = " << g_function_number << ", Dimension size = " << g_problem_size << "\n" << endl;

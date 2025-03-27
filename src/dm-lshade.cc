@@ -137,6 +137,14 @@ Fitness DMLSHADE::run()
         updateElite(pop, fitness, sorted_array);
         if (generation % mining_generation_step == 0){
           patterns = minePatterns();
+
+          int mpi = min((int)patterns.size(), pop_size); // max patterns insertions
+          for (size_t i = 0; i < mpi; i++) {
+            int idx = sorted_array[pop_size - 1 - i];
+            for (size_t j = 0; j < problem_size; j++) {
+                pop[idx][j] = patterns[i][j];
+            }
+          }
         }
 
         for (int target = 0; target < pop_size; target++)
