@@ -56,7 +56,7 @@ int main(int argc, char **argv) {
     for (int j = 0; j < num_runs; j++) { 
       //searchAlgorithm *alg = new LSHADE();
       int max_elite_size = std::round(elite_rate * g_pop_size);
-      int number_of_patterns = std::round(clusters_rate * elite_rate);
+      int number_of_patterns = std::round(clusters_rate * max_elite_size);
       searchAlgorithm *alg = new DMLSHADE(max_elite_size, number_of_patterns, mining_generation_step);
       bsf_fitness_array[j] = alg->run();
       cout << j + 1 << "th run, " << "error value = " << bsf_fitness_array[j] << endl;
