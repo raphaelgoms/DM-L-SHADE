@@ -8,26 +8,23 @@
 #include"de.h"
 
 void searchAlgorithm::initializeParameters() {
-  function_number = g_function_number;
-  problem_size = g_problem_size;
-  max_num_evaluations = g_max_num_evaluations;
-  pop_size = g_pop_size;
-  initializeFitnessFunctionParameters();
+  problem_size = problem->dimension();
+  max_region = problem->upperBound();
+  min_region = problem->lowerBound();
+
+  //epsilon is an acceptable error value, only meaningful when the problem
+  //defines a known optimum (e.g. CEC14 benchmark rules).
+  epsilon = pow(10.0, -8);
+  optimum = problem->hasKnownOptimum() ? problem->knownOptimum() : 0;
+
+  max_num_evaluations = config.max_num_evaluations;
+  pop_size = config.pop_size;
 }
 
 void searchAlgorithm::evaluatePopulation(const vector<Individual> &pop, vector<Fitness> &fitness) {
   for (int i = 0; i < pop_size; i++) {
-    cec14_test_func(pop[i],  &fitness[i], problem_size, 1, function_number);
+    fitness[i] = problem->evaluate(pop[i]);
   }
-}
-
-void searchAlgorithm::initializeFitnessFunctionParameters() {
-  //epsilon is an acceptable error value.
-  epsilon = pow(10.0, -8);
-  max_region = 100.0;
-  min_region = -100.0;
-
-  optimum = function_number * 100;
 }
 
 //set best solution (bsf_solution) and its fitness value (bsf_fitness) in the initial population

@@ -14,7 +14,9 @@
 using namespace pyclustering;
 using namespace pyclustering::clst;
 
-DMLSHADE::DMLSHADE(int max_elite_size, int number_of_patterns, int mining_generation_step)
+DMLSHADE::DMLSHADE(shared_ptr<Problem> problem, const SHADEConfig &config,
+                   int max_elite_size, int number_of_patterns, int mining_generation_step)
+  : searchAlgorithm(problem, config)
 {
   this->max_elite_size = max_elite_size;
   this->number_of_patterns = number_of_patterns;
@@ -47,7 +49,7 @@ Fitness DMLSHADE::run()
     Fitness bsf_fitness;
     int nfes = 0;
 
-    if ((fitness[0] - optimum) < epsilon)
+    if (problem->hasKnownOptimum() && (fitness[0] - optimum) < epsilon)
         fitness[0] = optimum;
     bsf_fitness = fitness[0];
     for (int j = 0; j < problem_size; j++)
@@ -57,7 +59,7 @@ Fitness DMLSHADE::run()
     {
         nfes++;
 
-        if ((fitness[i] - optimum) < epsilon)
+        if (problem->hasKnownOptimum() && (fitness[i] - optimum) < epsilon)
             fitness[i] = optimum;
 
         if (fitness[i] < bsf_fitness)
@@ -197,7 +199,7 @@ Fitness DMLSHADE::run()
             // following the rules of CEC 2014 real parameter competition,
             // if the gap between the error values of the best solution found and the optimal solution was 10^{−8} or smaller,
             // the error was treated as 0
-            if ((children_fitness[i] - optimum) < epsilon)
+            if (problem->hasKnownOptimum() && (children_fitness[i] - optimum) < epsilon)
                 children_fitness[i] = optimum;
 
             if (children_fitness[i] < bsf_fitness)
@@ -312,7 +314,7 @@ Fitness DMLSHADE::run()
             reducePopulationWithSort(pop, fitness);
 
             // resize the archive size
-            arc_size = pop_size * g_arc_rate;
+            arc_size = pop_size * arc_rate;
             if (arc_ind_count > arc_size)
                 arc_ind_count = arc_size;
 
@@ -431,8 +433,8 @@ void DMLSHADE::reducePopulationWithSort(vector<Individual> &pop, vector<Fitness>
 }
 
 void  DMLSHADE::setSHADEParameters() {
-  arc_rate = g_arc_rate;
+  arc_rate = config.arc_rate;
   arc_size = (int)round(pop_size * arc_rate);
-  p_best_rate = g_p_best_rate;
-  memory_size = g_memory_size;
+  p_best_rate = config.p_best_rate;
+  memory_size = config.memory_size;
 }
