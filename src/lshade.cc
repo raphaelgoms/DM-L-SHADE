@@ -35,14 +35,14 @@ Fitness LSHADE::run() {
   Fitness bsf_fitness;
   int nfes = 0;
 
-  if ((fitness[0] - optimum) < epsilon) fitness[0] = optimum;
+  if (problem->hasKnownOptimum() && (fitness[0] - optimum) < epsilon) fitness[0] = optimum;
   bsf_fitness = fitness[0];
   for (int j = 0; j < problem_size; j ++) bsf_solution[j] = pop[0][j];
   /////////////////////////////////////////////////////////////////////////
   for (int i = 0; i < pop_size; i++) {
     nfes++;
 
-    if ((fitness[i] - optimum) < epsilon) fitness[i] = optimum;
+    if (problem->hasKnownOptimum() && (fitness[i] - optimum) < epsilon) fitness[i] = optimum;
 
     if (fitness[i] < bsf_fitness) {
       bsf_fitness = fitness[i];
@@ -145,7 +145,7 @@ Fitness LSHADE::run() {
       //following the rules of CEC 2014 real parameter competition, 
       //if the gap between the error values of the best solution found and the optimal solution was 10^{−8} or smaller,
       //the error was treated as 0
-      if ((children_fitness[i] - optimum) < epsilon) children_fitness[i] = optimum;
+      if (problem->hasKnownOptimum() && (children_fitness[i] - optimum) < epsilon) children_fitness[i] = optimum;
 
       if (children_fitness[i] < bsf_fitness) {
         bsf_fitness = children_fitness[i];
@@ -249,8 +249,8 @@ Fitness LSHADE::run() {
 
       reducePopulationWithSort(pop, fitness);     
 
-      // resize the archive size 
-      arc_size = pop_size * g_arc_rate;
+      // resize the archive size
+      arc_size = pop_size * arc_rate;
       if (arc_ind_count > arc_size) arc_ind_count = arc_size;
 
       // resize the number of p-best individuals
@@ -317,8 +317,8 @@ void LSHADE::reducePopulationWithSort(vector<Individual> &pop, vector<Fitness> &
 }
 
 void  LSHADE::setSHADEParameters() {
-  arc_rate = g_arc_rate;
+  arc_rate = config.arc_rate;
   arc_size = (int)round(pop_size * arc_rate);
-  p_best_rate = g_p_best_rate;
-  memory_size = g_memory_size;
+  p_best_rate = config.p_best_rate;
+  memory_size = config.memory_size;
 }

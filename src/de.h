@@ -10,37 +10,40 @@
 
 #include <stdlib.h>
 #include <map>
+#include <memory>
 #include <iostream>
 #include <iomanip>
 #include <string.h>
 #include <vector>
 #include <math.h>
 
+#include "problem.h"
+
 using namespace std;
 
 typedef  double variable;
 typedef variable *Individual;
-typedef  double Fitness;
 typedef map<int, double> pattern;
 
-extern int g_function_number;
-extern int g_problem_size;
-extern unsigned int g_max_num_evaluations;
-extern int function_name;
-
-extern int g_pop_size;
-extern int g_memory_size;
-extern double g_p_best_rate;
-extern double g_arc_rate;
-
-void cec14_test_func(double *, double *,int,int,int);
+// Hyperparameters of the (L/DM-L)SHADE algorithm itself, independent of the
+// problem being optimized.
+struct SHADEConfig {
+  int pop_size;
+  unsigned int max_num_evaluations;
+  double arc_rate;
+  double p_best_rate;
+  int memory_size;
+};
 
 class searchAlgorithm {
 public:
+  searchAlgorithm(shared_ptr<Problem> problem, const SHADEConfig &config)
+    : problem(problem), config(config) {}
+  virtual ~searchAlgorithm() {}
+
   virtual Fitness run() = 0;
 protected:
   void evaluatePopulation(const vector<Individual> &pop, vector<Fitness> &fitness);
-  void initializeFitnessFunctionParameters();
 
   void initializeParameters();
   Individual makeNewIndividual();
@@ -98,7 +101,9 @@ protected:
     if ((j + 1) < last) sortIndexWithQuickSort(array, j + 1, last, index);    
   }
   
-  int function_number;
+  shared_ptr<Problem> problem;
+  SHADEConfig config;
+
   int problem_size;
   variable max_region;
   variable min_region;
@@ -111,6 +116,9 @@ protected:
 
 class LSHADE: public searchAlgorithm {
 public:
+  LSHADE(shared_ptr<Problem> problem, const SHADEConfig &config)
+    : searchAlgorithm(problem, config) {}
+
   virtual Fitness run();
   void setSHADEParameters();
   void reducePopulationWithSort(vector<Individual> &pop, vector<Fitness> &fitness);
@@ -125,7 +133,8 @@ public:
 
 class DMLSHADE: public searchAlgorithm {
 public:
-  DMLSHADE(int max_elite_size, int number_of_patterns, int mining_generation_step);
+  DMLSHADE(shared_ptr<Problem> problem, const SHADEConfig &config,
+           int max_elite_size, int number_of_patterns, int mining_generation_step);
 
   virtual Fitness run();
   void setSHADEParameters();
