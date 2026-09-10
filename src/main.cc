@@ -9,18 +9,32 @@
   Written by Raphael Gomes Santos (raphaelgoms [at] gmail.com)
 */
 
+#include <string>
+
 #include "de.h"
 #include "cec14_problem.h"
 
 double *OShift,*M,*y,*z,*x_bound;
 int ini_flag=0,n_flag,func_flag,*SS;
 
-static void runCEC14Benchmark(int function_start, int function_end, int problem_size, int num_runs) {
-  //DM-L-SHADE parameters
-  double elite_rate = 0.1;
-  double clusters_rate = 0.1468;
-  int mining_generation_step = 168;
+enum class AlgorithmType { LSHADE, DMLSHADE };
 
+static searchAlgorithm *createAlgorithm(AlgorithmType algorithm_type, shared_ptr<Problem> problem, const SHADEConfig &config) {
+  if (algorithm_type == AlgorithmType::DMLSHADE) {
+    //DM-L-SHADE parameters
+    double elite_rate = 0.1;
+    double clusters_rate = 0.1468;
+    int mining_generation_step = 168;
+
+    int max_elite_size = std::round(elite_rate * config.pop_size);
+    int number_of_patterns = std::round(clusters_rate * max_elite_size);
+    return new DMLSHADE(problem, config, max_elite_size, number_of_patterns, mining_generation_step);
+  }
+
+  return new LSHADE(problem, config);
+}
+
+static void runCEC14Benchmark(AlgorithmType algorithm_type, int function_start, int function_end, int problem_size, int num_runs) {
   SHADEConfig config;
   config.pop_size = (int)round(problem_size * 18);
   config.max_num_evaluations = problem_size * 10000;
@@ -39,9 +53,7 @@ static void runCEC14Benchmark(int function_start, int function_end, int problem_
     for (int j = 0; j < num_runs; j++) {
       auto problem = make_shared<CEC14Problem>(function_number, problem_size);
 
-      int max_elite_size = std::round(elite_rate * config.pop_size);
-      int number_of_patterns = std::round(clusters_rate * max_elite_size);
-      searchAlgorithm *alg = new DMLSHADE(problem, config, max_elite_size, number_of_patterns, mining_generation_step);
+      searchAlgorithm *alg = createAlgorithm(algorithm_type, problem, config);
       bsf_fitness_array[j] = alg->run();
       cout << j + 1 << "th run, " << "error value = " << bsf_fitness_array[j] << endl;
       delete alg;
@@ -62,7 +74,7 @@ static void runCEC14Benchmark(int function_start, int function_end, int problem_
 // Demonstrates that the solver is not tied to the CEC14 benchmark: optimizes
 // the Sphere function (sum of x_i^2) via a FunctionProblem, never touching
 // cec14_test_func.
-static void runSphereDemo(int problem_size) {
+static void runSphereDemo(AlgorithmType algorithm_type, int problem_size) {
   cout << "\n-------------------------------------------------------" << endl;
   cout << "Sphere function demo, Dimension size = " << problem_size << "\n" << endl;
 
@@ -80,7 +92,7 @@ static void runSphereDemo(int problem_size) {
   config.arc_rate = 2.6;
   config.p_best_rate = 0.11;
 
-  searchAlgorithm *alg = new LSHADE(sphere, config);
+  searchAlgorithm *alg = createAlgorithm(algorithm_type, sphere, config);
   Fitness result = alg->run();
   cout << "best fitness found = " << result << endl;
   delete alg;
@@ -93,6 +105,7 @@ int main(int argc, char **argv) {
   bool sphere_demo = false;
   int function_start = 1;
   int function_end = 30;
+  AlgorithmType algorithm_type = AlgorithmType::LSHADE;
 
   for (int i = 1; i < argc; i++) {
     if (strcmp(argv[i], "--sphere") == 0) {
@@ -107,6 +120,19 @@ int main(int argc, char **argv) {
         return 1;
       }
       i++;
+    } else if (strcmp(argv[i], "--algorithm") == 0 && i + 1 < argc) {
+      string algorithm_name = argv[i + 1];
+      for (auto &c : algorithm_name) c = tolower(c);
+
+      if (algorithm_name == "lshade") {
+        algorithm_type = AlgorithmType::LSHADE;
+      } else if (algorithm_name == "dmlshade" || algorithm_name == "dm-lshade") {
+        algorithm_type = AlgorithmType::DMLSHADE;
+      } else {
+        cerr << "Invalid algorithm. Please use \"lshade\" or \"dmlshade\"." << endl;
+        return 1;
+      }
+      i++;
     }
   }
 
@@ -114,13 +140,13 @@ int main(int argc, char **argv) {
   int problem_size = 10;
 
   if (sphere_demo) {
-    runSphereDemo(problem_size);
+    runSphereDemo(algorithm_type, problem_size);
     return 0;
   }
 
   //number of runs
   int num_runs = 51;
-  runCEC14Benchmark(function_start, function_end, problem_size, num_runs);
+  runCEC14Benchmark(algorithm_type, function_start, function_end, problem_size, num_runs);
 
   return 0;
 }
