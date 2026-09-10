@@ -19,6 +19,10 @@ int ini_flag=0,n_flag,func_flag,*SS;
 
 enum class AlgorithmType { LSHADE, DMLSHADE };
 
+// Benchmark suite that --f indexes into. Only CEC2014 exists today, but this
+// is where future suites (e.g. CEC2017, CEC2020) will be added.
+enum class BenchmarkType { CEC2014 };
+
 static searchAlgorithm *createAlgorithm(AlgorithmType algorithm_type, shared_ptr<Problem> problem, const SHADEConfig &config) {
   if (algorithm_type == AlgorithmType::DMLSHADE) {
     //DM-L-SHADE parameters
@@ -34,7 +38,15 @@ static searchAlgorithm *createAlgorithm(AlgorithmType algorithm_type, shared_ptr
   return new LSHADE(problem, config);
 }
 
-static void runCEC14Benchmark(AlgorithmType algorithm_type, int function_start, int function_end, int problem_size, int num_runs) {
+static shared_ptr<Problem> createBenchmarkProblem(BenchmarkType benchmark_type, int function_number, int problem_size) {
+  switch (benchmark_type) {
+    case BenchmarkType::CEC2014:
+    default:
+      return make_shared<CEC14Problem>(function_number, problem_size);
+  }
+}
+
+static void runBenchmark(BenchmarkType benchmark_type, AlgorithmType algorithm_type, int function_start, int function_end, int problem_size, int num_runs) {
   SHADEConfig config;
   config.pop_size = (int)round(problem_size * 18);
   config.max_num_evaluations = problem_size * 10000;
@@ -51,7 +63,7 @@ static void runCEC14Benchmark(AlgorithmType algorithm_type, int function_start, 
     Fitness std_bsf_fitness = 0;
 
     for (int j = 0; j < num_runs; j++) {
-      auto problem = make_shared<CEC14Problem>(function_number, problem_size);
+      auto problem = createBenchmarkProblem(benchmark_type, function_number, problem_size);
 
       searchAlgorithm *alg = createAlgorithm(algorithm_type, problem, config);
       bsf_fitness_array[j] = alg->run();
@@ -106,10 +118,22 @@ int main(int argc, char **argv) {
   int function_start = 1;
   int function_end = 30;
   AlgorithmType algorithm_type = AlgorithmType::LSHADE;
+  BenchmarkType benchmark_type = BenchmarkType::CEC2014;
 
   for (int i = 1; i < argc; i++) {
     if (strcmp(argv[i], "--sphere") == 0) {
       sphere_demo = true;
+    } else if (strcmp(argv[i], "--benchmark") == 0 && i + 1 < argc) {
+      string benchmark_name = argv[i + 1];
+      for (auto &c : benchmark_name) c = tolower(c);
+
+      if (benchmark_name == "cec2014" || benchmark_name == "cec14") {
+        benchmark_type = BenchmarkType::CEC2014;
+      } else {
+        cerr << "Invalid benchmark. Please use \"cec2014\"." << endl;
+        return 1;
+      }
+      i++;
     } else if (strcmp(argv[i], "--f") == 0 && i + 1 < argc) {
       int func_num = atoi(argv[i + 1]);
       if (func_num >= 1 && func_num <= 30) {
@@ -146,7 +170,7 @@ int main(int argc, char **argv) {
 
   //number of runs
   int num_runs = 51;
-  runCEC14Benchmark(algorithm_type, function_start, function_end, problem_size, num_runs);
+  runBenchmark(benchmark_type, algorithm_type, function_start, function_end, problem_size, num_runs);
 
   return 0;
 }
