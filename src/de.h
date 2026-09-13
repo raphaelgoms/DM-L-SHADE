@@ -17,7 +17,7 @@
 #include <vector>
 #include <math.h>
 
-#include "problem.h"
+#include "problems/problem.h"
 
 using namespace std;
 
