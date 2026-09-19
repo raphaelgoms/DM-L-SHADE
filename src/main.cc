@@ -14,6 +14,7 @@
 
 #include "de.h"
 #include "problems/cec14_problem.h"
+#include "problems/cec22_problem.h"
 #include "problems/tsp_problem.h"
 #include "problems/knapsack_problem.h"
 #include "problems/cvrp_problem.h"
@@ -24,9 +25,14 @@ int ini_flag=0,n_flag,func_flag,*SS;
 
 enum class AlgorithmType { LSHADE, DMLSHADE };
 
-// Benchmark suite that --f indexes into. Only CEC2014 exists today, but this
-// is where future suites (e.g. CEC2017, CEC2020) will be added.
-enum class BenchmarkType { CEC2014 };
+// Benchmark suite that --f indexes into.
+enum class BenchmarkType { CEC2014, CEC2022 };
+
+// Number of functions defined by each benchmark suite; bounds what --f and
+// the default (whole-suite) function range accept.
+static int benchmarkFunctionCount(BenchmarkType benchmark_type) {
+  return benchmark_type == BenchmarkType::CEC2022 ? 12 : 30;
+}
 
 static searchAlgorithm *createAlgorithm(AlgorithmType algorithm_type, shared_ptr<Problem> problem, const SHADEConfig &config) {
   if (algorithm_type == AlgorithmType::DMLSHADE) {
@@ -60,6 +66,8 @@ static Fitness runAlgorithm(searchAlgorithm *alg, bool show_time) {
 
 static shared_ptr<Problem> createBenchmarkProblem(BenchmarkType benchmark_type, int function_number, int problem_size) {
   switch (benchmark_type) {
+    case BenchmarkType::CEC2022:
+      return make_shared<CEC22Problem>(function_number, problem_size);
     case BenchmarkType::CEC2014:
     default:
       return make_shared<CEC14Problem>(function_number, problem_size);
@@ -268,6 +276,8 @@ int main(int argc, char **argv) {
   bool show_time = false;
   int function_start = 1;
   int function_end = 30;
+  bool function_range_explicit = false;
+  int requested_function = 1;
   AlgorithmType algorithm_type = AlgorithmType::LSHADE;
   BenchmarkType benchmark_type = BenchmarkType::CEC2014;
 
@@ -332,20 +342,18 @@ int main(int argc, char **argv) {
 
       if (benchmark_name == "cec2014" || benchmark_name == "cec14") {
         benchmark_type = BenchmarkType::CEC2014;
+      } else if (benchmark_name == "cec2022" || benchmark_name == "cec22") {
+        benchmark_type = BenchmarkType::CEC2022;
       } else {
-        cerr << "Invalid benchmark. Please use \"cec2014\"." << endl;
+        cerr << "Invalid benchmark. Please use \"cec2014\" or \"cec2022\"." << endl;
         return 1;
       }
       i++;
     } else if (strcmp(argv[i], "--f") == 0 && i + 1 < argc) {
-      int func_num = atoi(argv[i + 1]);
-      if (func_num >= 1 && func_num <= 30) {
-        function_start = func_num;
-        function_end = func_num;
-      } else {
-        cerr << "Invalid function number. Please use a value between 1 and 30." << endl;
-        return 1;
-      }
+      // Range depends on the benchmark suite, which may be parsed after
+      // this flag, so the check is deferred until after the argument loop.
+      requested_function = atoi(argv[i + 1]);
+      function_range_explicit = true;
       i++;
     } else if (strcmp(argv[i], "--algorithm") == 0 && i + 1 < argc) {
       string algorithm_name = argv[i + 1];
@@ -361,6 +369,19 @@ int main(int argc, char **argv) {
       }
       i++;
     }
+  }
+
+  int max_function_number = benchmarkFunctionCount(benchmark_type);
+  if (function_range_explicit) {
+    if (requested_function < 1 || requested_function > max_function_number) {
+      cerr << "Invalid function number. Please use a value between 1 and "
+           << max_function_number << "." << endl;
+      return 1;
+    }
+    function_start = function_end = requested_function;
+  } else {
+    function_start = 1;
+    function_end = max_function_number;
   }
 
   //dimension size. please select from 10, 30, 50, 100
