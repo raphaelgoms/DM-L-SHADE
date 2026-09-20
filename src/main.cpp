@@ -50,9 +50,15 @@ static void runBenchmark(BenchmarkType benchmark_type, AlgorithmType algorithm_t
   config.arc_rate = 2.6;
   config.p_best_rate = 0.11;
 
+  // A single run prints only its error value, so callers (e.g. the scripts
+  // in experiments/) can parse the output without stripping the report.
+  bool single_run = num_runs == 1;
+
   for (int function_number = function_start; function_number <= function_end; function_number++) {
-    cout << "\n-------------------------------------------------------" << endl;
-    cout << "Function = " << function_number << ", Dimension size = " << problem_size << "\n" << endl;
+    if (!single_run) {
+      cout << "\n-------------------------------------------------------" << endl;
+      cout << "Function = " << function_number << ", Dimension size = " << problem_size << "\n" << endl;
+    }
 
     Fitness *bsf_fitness_array = (Fitness*)malloc(sizeof(Fitness) * num_runs);
     Fitness mean_bsf_fitness = 0;
@@ -63,26 +69,26 @@ static void runBenchmark(BenchmarkType benchmark_type, AlgorithmType algorithm_t
 
       searchAlgorithm *alg = createAlgorithm(algorithm_type, problem, config);
       bsf_fitness_array[j] = runAlgorithm(alg, show_time);
-      cout << j + 1 << "th run, " << "error value = " << bsf_fitness_array[j] << endl;
+      if (single_run) cout << bsf_fitness_array[j] << endl;
+      else cout << j + 1 << "th run, " << "error value = " << bsf_fitness_array[j] << endl;
       delete alg;
     }
 
-    for (int j = 0; j < num_runs; j++) mean_bsf_fitness += bsf_fitness_array[j];
-    mean_bsf_fitness /= num_runs;
+    if (!single_run) {
+      for (int j = 0; j < num_runs; j++) mean_bsf_fitness += bsf_fitness_array[j];
+      mean_bsf_fitness /= num_runs;
 
-    for (int j = 0; j < num_runs; j++) std_bsf_fitness += pow((mean_bsf_fitness - bsf_fitness_array[j]), 2.0);
-    std_bsf_fitness /= num_runs;
-    std_bsf_fitness = sqrt(std_bsf_fitness);
+      for (int j = 0; j < num_runs; j++) std_bsf_fitness += pow((mean_bsf_fitness - bsf_fitness_array[j]), 2.0);
+      std_bsf_fitness /= num_runs;
+      std_bsf_fitness = sqrt(std_bsf_fitness);
 
-    cout  << "\nmean = " << mean_bsf_fitness << ", std = " << std_bsf_fitness << endl;
+      cout  << "\nmean = " << mean_bsf_fitness << ", std = " << std_bsf_fitness << endl;
+    }
     free(bsf_fitness_array);
   }
 }
 
 int main(int argc, char **argv) {
-  //random seed is selected based on time according to competition rules
-  srand((unsigned)time(NULL));
-
   bool sphere_demo = false;
   bool tsp_demo = false;
   int tsp_n_cities = 15;
@@ -95,6 +101,9 @@ int main(int argc, char **argv) {
   int set_covering_n_blocks = 8;
   int set_covering_block_size = 4;
   bool show_time = false;
+  int num_runs = 51;
+  bool seed_explicit = false;
+  unsigned seed = 0;
   int function_start = 1;
   int function_end = 30;
   bool function_range_explicit = false;
@@ -157,6 +166,17 @@ int main(int argc, char **argv) {
       i++;
     } else if (strcmp(argv[i], "--show-time") == 0) {
       show_time = true;
+    } else if (strcmp(argv[i], "--runs") == 0 && i + 1 < argc) {
+      num_runs = atoi(argv[i + 1]);
+      if (num_runs < 1) {
+        cerr << "Invalid number of runs. Please use a value >= 1." << endl;
+        return 1;
+      }
+      i++;
+    } else if (strcmp(argv[i], "--seed") == 0 && i + 1 < argc) {
+      seed = (unsigned)strtoul(argv[i + 1], NULL, 10);
+      seed_explicit = true;
+      i++;
     } else if (strcmp(argv[i], "--benchmark") == 0 && i + 1 < argc) {
       string benchmark_name = argv[i + 1];
       for (auto &c : benchmark_name) c = tolower(c);
@@ -191,6 +211,11 @@ int main(int argc, char **argv) {
       i++;
     }
   }
+
+  // Random seed is selected based on time according to competition rules,
+  // unless --seed is given to make a run reproducible (or to give concurrent
+  // runs started within the same second different seeds).
+  srand(seed_explicit ? seed : (unsigned)time(NULL));
 
   int max_function_number = benchmarkFunctionCount(benchmark_type);
   if (function_range_explicit) {
@@ -233,8 +258,6 @@ int main(int argc, char **argv) {
     return 0;
   }
 
-  //number of runs
-  int num_runs = 51;
   runBenchmark(benchmark_type, algorithm_type, function_start, function_end, problem_size, num_runs, show_time);
 
   return 0;
