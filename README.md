@@ -6,11 +6,11 @@ The implementation was written above the L-SHADE code of Tanabe and Fukunaga [[1
 
 In our implementation L-SHADE was hybridized with two Clustering Methods (K-means [[2](#references)] and X-means [[3](#references)]). But, we pretend try the hybridization with other DM methods. The implementation of clustering algorithms used is from the [Pyclustering Library](https://github.com/annoviko/pyclustering).
 
-## Demos and adding a new problem
+## Demos and solving a new problem
 
 The solver is problem-agnostic: it optimizes anything implementing the `Problem` interface. Besides the CEC benchmark suites, the repository ships demos for Sphere, TSP, knapsack, CVRP and set covering (the combinatorial ones via random-key encoding).
 
-See [src/demos/README.md](src/demos/README.md) for the list of demos and their CLI flags, and for step-by-step guides on adding a new problem, both continuous (Rastrigin) and combinatorial (TSP).
+See [src/demos/README.md](src/demos/README.md) for the list of demos and their CLI flags, and for a step-by-step guide on applying the solver to your own problem, both continuous (Rastrigin) and combinatorial (TSP).
 
 ## References
 
