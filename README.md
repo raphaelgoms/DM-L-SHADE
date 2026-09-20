@@ -12,6 +12,23 @@ The solver is problem-agnostic: it optimizes anything implementing the `Problem`
 
 See [src/demos/README.md](src/demos/README.md) for the list of demos and their CLI flags, and for a step-by-step guide on applying the solver to your own problem, both continuous (Rastrigin) and combinatorial (TSP).
 
+## Citation
+
+If you use this code in your research, please cite:
+
+> R. G. Santos, A. Plastino and A. C. M. de Oliveira, "DMC-GRASP: A Continuous GRASP hybridized with Data Mining," *2022 IEEE Congress on Evolutionary Computation (CEC)*, Padua, Italy, 2022. DOI: [10.1109/CEC55065.2022.9870264](https://doi.org/10.1109/CEC55065.2022.9870264).
+
+```bibtex
+@inproceedings{santos2022dmcgrasp,
+  author    = {Santos, Raphael Gomes and Plastino, Alexandre and de Oliveira, Alexandre C. M.},
+  title     = {{DMC-GRASP}: A Continuous {GRASP} hybridized with Data Mining},
+  booktitle = {2022 IEEE Congress on Evolutionary Computation (CEC)},
+  address   = {Padua, Italy},
+  year      = {2022},
+  doi       = {10.1109/CEC55065.2022.9870264}
+}
+```
+
 ## References
 
 [1] Tanabe, Ryoji and Alex S. Fukunaga. “Improving the search performance of SHADE using linear population size reduction.” *2014 IEEE Congress on Evolutionary Computation (CEC)* (2014): 1658-1665. (Available [HERE](https://ryojitanabe.github.io/pdf/tf-cec2014.pdf)).
