@@ -5,7 +5,7 @@
   Written by Ryoji Tanabe (rt.ryoji.tanabe [at] gmail.com)
 */
 
-#include"de.h"
+#include "algorithm.h"
 
 void searchAlgorithm::initializeParameters() {
   problem_size = problem->dimension();

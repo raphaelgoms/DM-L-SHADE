@@ -5,7 +5,7 @@
   Written by Raphael Gomes Santos (raphaelgoms [at] gmail.com)
 */
 
-#include"de.h"
+#include "algorithm.h"
 #include <algorithm>
 #include <pyclustering/cluster/kmeans.hpp>
 #include <pyclustering/cluster/xmeans.hpp>

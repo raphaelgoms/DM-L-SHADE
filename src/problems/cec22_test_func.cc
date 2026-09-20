@@ -815,7 +815,7 @@ void cec22_test_func(double *x, double *f, int nx, int mx,int func_num)
 		}
 
 		/* Load Matrix M*/
-		sprintf(FileName, "src/problems/cec22_input_data/M_%d_D%d.txt", func_num,nx);
+		sprintf(FileName, "data/cec22/M_%d_D%d.txt", func_num,nx);
 		fpt = fopen(FileName,"r");
 		if (fpt==NULL)
 		{
@@ -844,7 +844,7 @@ void cec22_test_func(double *x, double *f, int nx, int mx,int func_num)
 		fclose(fpt);
 
 		/* Load shift_data */
-		sprintf(FileName, "src/problems/cec22_input_data/shift_data_%d.txt", func_num);
+		sprintf(FileName, "data/cec22/shift_data_%d.txt", func_num);
 		fpt = fopen(FileName,"r");
 		if (fpt==NULL)
 		{
@@ -890,7 +890,7 @@ void cec22_test_func(double *x, double *f, int nx, int mx,int func_num)
 
 		if (func_num>=6&&func_num<=8)
 		{
-			sprintf(FileName, "src/problems/cec22_input_data/shuffle_data_%d_D%d.txt", func_num, nx);
+			sprintf(FileName, "data/cec22/shuffle_data_%d_D%d.txt", func_num, nx);
 			fpt = fopen(FileName,"r");
 			if (fpt==NULL)
 			{

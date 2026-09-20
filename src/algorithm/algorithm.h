@@ -5,8 +5,8 @@
   Written by Ryoji Tanabe (rt.ryoji.tanabe [at] gmail.com)
 */
 
-#ifndef _HEADER_H_
-#define _HEADER_H_
+#ifndef _ALGORITHM_H_
+#define _ALGORITHM_H_
 
 #include <stdlib.h>
 #include <map>
