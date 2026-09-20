@@ -7,7 +7,7 @@ void cec22_test_func(double *, double *, int, int, int);
 
 // Adapts the CEC-2022 benchmark suite to the Problem interface. All of the
 // CEC22-specific globals (OShift, M, ini_flag, ...) stay private to
-// cec22_test_func.cc; this class only calls into it.
+// cec22_test_func.cpp; this class only calls into it.
 class CEC22Problem : public Problem {
 public:
   CEC22Problem(int function_number, int dim);

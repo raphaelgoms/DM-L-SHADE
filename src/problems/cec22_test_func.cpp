@@ -17,9 +17,9 @@ extern double *OShift,*M,*y,*z,*x_bound;
 extern int ini_flag,n_flag,func_flag,*SS;
 
 // Every helper below is CEC22-specific and shares names with the CEC14 suite
-// (cec14_test_func.cc), so it is kept in an anonymous namespace (internal
+// (cec14_test_func.cpp), so it is kept in an anonymous namespace (internal
 // linkage) to avoid duplicate-symbol clashes when both files are linked
-// together. cec22_test_func stays outside so problems/cec22_problem.cc can
+// together. cec22_test_func stays outside so problems/cec22_problem.cpp can
 // call it.
 namespace {
 

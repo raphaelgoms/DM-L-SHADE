@@ -4,8 +4,8 @@ SRC_DIR = src
 BUILD_DIR = build
 THIRD_PARTY_DIR = third_party/pyclustering
 
-SOURCES := $(shell find $(SRC_DIR) -name '*.cc')
-OBJS := $(patsubst $(SRC_DIR)/%.cc,$(BUILD_DIR)/%.o,$(SOURCES))
+SOURCES := $(shell find $(SRC_DIR) -name '*.cpp')
+OBJS := $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(SOURCES))
 
 CC = g++
 OPTION = -std=c++14 -O3
@@ -23,7 +23,7 @@ CFLAGS = -I$(SRC_DIR) -I$(INC_DIR) -I$(INC_DIR)/pyclustering
 $(TARGET): $(OBJS)
 	$(CC) -o $(TARGET) $(OBJS) $(OPTION) $(LDFLAGS)
 
-$(BUILD_DIR)/%.o: $(SRC_DIR)/%.cc
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 

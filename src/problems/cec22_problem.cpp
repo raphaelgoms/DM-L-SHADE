@@ -2,7 +2,7 @@
 
 namespace {
 
-// Bias added to each of the 12 CEC22 functions (see cec22_test_func.cc),
+// Bias added to each of the 12 CEC22 functions (see cec22_test_func.cpp),
 // and therefore each function's known optimum error value.
 const double kKnownOptimum[] = {
   300.0, 400.0, 600.0, 800.0, 900.0, 1800.0,
