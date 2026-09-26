@@ -33,6 +33,9 @@ struct SHADEConfig {
   double arc_rate;
   double p_best_rate;
   int memory_size;
+  // Fractions of max_num_evaluations at which run() records the best error
+  // found so far (see checkpointErrors()). Empty means no recording.
+  vector<double> checkpoint_fractions;
 };
 
 class searchAlgorithm {
@@ -42,10 +45,15 @@ public:
   virtual ~searchAlgorithm() {}
 
   virtual Fitness run() = 0;
+
+  // Best error (best fitness - known optimum) after each of
+  // config.checkpoint_fractions of the evaluation budget, filled by run().
+  const vector<Fitness> &checkpointErrors() const { return checkpoint_errors; }
 protected:
   void evaluatePopulation(const vector<Individual> &pop, vector<Fitness> &fitness);
 
   void initializeParameters();
+  void recordCheckpoints(unsigned int nfes, Fitness bsf_fitness);
   Individual makeNewIndividual();
   void modifySolutionWithParentMedium(Individual child, Individual parent);
   void setBestSolution(const vector<Individual> &pop, const vector<Fitness> &fitness, Individual &bsf_solution, Fitness &bsf_fitness);
@@ -112,6 +120,11 @@ protected:
   Fitness epsilon;
   unsigned int max_num_evaluations;
   int pop_size;
+
+  // Evaluation counts at which the best error is recorded, and what was
+  // recorded so far.
+  vector<unsigned int> checkpoint_evaluations;
+  vector<Fitness> checkpoint_errors;
 };
 
 class LSHADE: public searchAlgorithm {

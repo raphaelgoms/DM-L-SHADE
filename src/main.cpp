@@ -32,6 +32,17 @@ static int benchmarkFunctionCount(BenchmarkType benchmark_type) {
   return benchmark_type == BenchmarkType::CEC2022 ? 12 : 30;
 }
 
+// Dimensions each benchmark suite defines (and ships data files for).
+static bool benchmarkSupportsDimension(BenchmarkType benchmark_type, int dimension) {
+  if (benchmark_type == BenchmarkType::CEC2022) return dimension == 10 || dimension == 20;
+  return dimension == 10 || dimension == 30 || dimension == 50 || dimension == 100;
+}
+
+// CEC-2014 rules: record the error at these fractions of MaxFES in every run.
+static const double kCEC14CheckpointFractions[] = {
+  0.01, 0.02, 0.03, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0
+};
+
 static shared_ptr<Problem> createBenchmarkProblem(BenchmarkType benchmark_type, int function_number, int problem_size) {
   switch (benchmark_type) {
     case BenchmarkType::CEC2022:
@@ -42,13 +53,16 @@ static shared_ptr<Problem> createBenchmarkProblem(BenchmarkType benchmark_type, 
   }
 }
 
-static void runBenchmark(BenchmarkType benchmark_type, AlgorithmType algorithm_type, int function_start, int function_end, int problem_size, int num_runs, bool show_time) {
+static void runBenchmark(BenchmarkType benchmark_type, AlgorithmType algorithm_type, int function_start, int function_end, int problem_size, int num_runs, bool show_time, bool record_checkpoints) {
   SHADEConfig config;
   config.pop_size = (int)round(problem_size * 18);
   config.max_num_evaluations = problem_size * 10000;
   config.memory_size = 6;
   config.arc_rate = 2.6;
   config.p_best_rate = 0.11;
+  if (record_checkpoints) {
+    config.checkpoint_fractions.assign(std::begin(kCEC14CheckpointFractions), std::end(kCEC14CheckpointFractions));
+  }
 
   // A single run prints only its error value, so callers (e.g. the scripts
   // in experiments/) can parse the output without stripping the report.
@@ -69,7 +83,15 @@ static void runBenchmark(BenchmarkType benchmark_type, AlgorithmType algorithm_t
 
       searchAlgorithm *alg = createAlgorithm(algorithm_type, problem, config);
       bsf_fitness_array[j] = runAlgorithm(alg, show_time);
-      if (single_run) cout << bsf_fitness_array[j] << endl;
+      if (record_checkpoints) {
+        // One line with the error at each checkpoint; the last one is the final error.
+        const vector<Fitness> &checkpoint_errors = alg->checkpointErrors();
+        for (size_t k = 0; k < checkpoint_errors.size(); k++) {
+          cout << (k ? " " : "") << checkpoint_errors[k];
+        }
+        cout << endl;
+      }
+      else if (single_run) cout << bsf_fitness_array[j] << endl;
       else cout << j + 1 << "th run, " << "error value = " << bsf_fitness_array[j] << endl;
       delete alg;
     }
@@ -102,6 +124,8 @@ int main(int argc, char **argv) {
   int set_covering_block_size = 4;
   bool show_time = false;
   int num_runs = 51;
+  int problem_size = 10;
+  bool record_checkpoints = false;
   bool seed_explicit = false;
   unsigned seed = 0;
   int function_start = 1;
@@ -173,6 +197,13 @@ int main(int argc, char **argv) {
         return 1;
       }
       i++;
+    } else if (strcmp(argv[i], "--dim") == 0 && i + 1 < argc) {
+      // Which sizes are valid depends on the benchmark suite, checked after
+      // the argument loop.
+      problem_size = atoi(argv[i + 1]);
+      i++;
+    } else if (strcmp(argv[i], "--checkpoints") == 0) {
+      record_checkpoints = true;
     } else if (strcmp(argv[i], "--seed") == 0 && i + 1 < argc) {
       seed = (unsigned)strtoul(argv[i + 1], NULL, 10);
       seed_explicit = true;
@@ -230,8 +261,10 @@ int main(int argc, char **argv) {
     function_end = max_function_number;
   }
 
-  //dimension size. please select from 10, 30, 50, 100
-  int problem_size = 10;
+  if (record_checkpoints && num_runs != 1) {
+    cerr << "--checkpoints requires --runs 1." << endl;
+    return 1;
+  }
 
   if (sphere_demo) {
     runSphereDemo(algorithm_type, problem_size, show_time);
@@ -258,7 +291,13 @@ int main(int argc, char **argv) {
     return 0;
   }
 
-  runBenchmark(benchmark_type, algorithm_type, function_start, function_end, problem_size, num_runs, show_time);
+  if (!benchmarkSupportsDimension(benchmark_type, problem_size)) {
+    cerr << "Invalid dimension for this benchmark. Please use "
+         << (benchmark_type == BenchmarkType::CEC2022 ? "10 or 20" : "10, 30, 50 or 100") << "." << endl;
+    return 1;
+  }
+
+  runBenchmark(benchmark_type, algorithm_type, function_start, function_end, problem_size, num_runs, show_time, record_checkpoints);
 
   return 0;
 }

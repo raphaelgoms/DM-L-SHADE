@@ -49,6 +49,8 @@ Fitness LSHADE::run() {
       for (int j = 0; j < problem_size; j ++) bsf_solution[j] = pop[i][j];
     }
 
+    recordCheckpoints(nfes, bsf_fitness);
+
     // if (nfes % 1000 == 0) {
     //   //      cout << nfes << " " << bsf_fitness - optimum << endl; 
     //   cout << bsf_fitness - optimum << endl; 
@@ -151,6 +153,8 @@ Fitness LSHADE::run() {
         bsf_fitness = children_fitness[i];
         for (int j = 0; j < problem_size; j ++) bsf_solution[j] = children[i][j];
       }
+
+      recordCheckpoints(nfes, bsf_fitness);
 
       // if (nfes % 1000 == 0) {
       // //      cout << nfes << " " << bsf_fitness - optimum << endl; 

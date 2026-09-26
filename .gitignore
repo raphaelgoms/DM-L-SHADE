@@ -34,3 +34,6 @@
 .vscode
 solver
 CLAUDE.md
+
+# Generated experiment results
+experiments/results/

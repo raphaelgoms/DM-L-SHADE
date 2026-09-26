@@ -19,6 +19,21 @@ void searchAlgorithm::initializeParameters() {
 
   max_num_evaluations = config.max_num_evaluations;
   pop_size = config.pop_size;
+
+  checkpoint_evaluations.clear();
+  checkpoint_errors.clear();
+  for (double fraction : config.checkpoint_fractions) {
+    checkpoint_evaluations.push_back((unsigned int)llround(fraction * max_num_evaluations));
+  }
+}
+
+// Must be called after every counted evaluation, once bsf_fitness reflects it,
+// so each checkpoint holds the best error at exactly that number of evaluations.
+void searchAlgorithm::recordCheckpoints(unsigned int nfes, Fitness bsf_fitness) {
+  while (checkpoint_errors.size() < checkpoint_evaluations.size() &&
+         nfes >= checkpoint_evaluations[checkpoint_errors.size()]) {
+    checkpoint_errors.push_back(bsf_fitness - optimum);
+  }
 }
 
 void searchAlgorithm::evaluatePopulation(const vector<Individual> &pop, vector<Fitness> &fitness) {
