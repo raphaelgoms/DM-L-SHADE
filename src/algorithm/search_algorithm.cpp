@@ -20,18 +20,32 @@ void searchAlgorithm::initializeParameters() {
   max_num_evaluations = config.max_num_evaluations;
   pop_size = config.pop_size;
 
-  checkpoint_evaluations.clear();
   checkpoint_errors.clear();
-  for (double fraction : config.checkpoint_fractions) {
-    checkpoint_evaluations.push_back((unsigned int)llround(fraction * max_num_evaluations));
-  }
+  termination_evaluations = 0;
 }
 
 // Must be called after every counted evaluation, once bsf_fitness reflects it,
 // so each checkpoint holds the best error at exactly that number of evaluations.
 void searchAlgorithm::recordCheckpoints(unsigned int nfes, Fitness bsf_fitness) {
-  while (checkpoint_errors.size() < checkpoint_evaluations.size() &&
-         nfes >= checkpoint_evaluations[checkpoint_errors.size()]) {
+  const vector<unsigned int> &checkpoints = config.checkpoint_evaluations;
+  while (checkpoint_errors.size() < checkpoints.size() &&
+         nfes >= checkpoints[checkpoint_errors.size()]) {
+    checkpoint_errors.push_back(bsf_fitness - optimum);
+  }
+}
+
+// Whether the search is over: the budget is spent or, with
+// config.stop_at_optimum, the error went below epsilon.
+bool searchAlgorithm::shouldStop(unsigned int nfes, Fitness bsf_fitness) const {
+  if (nfes >= max_num_evaluations) return true;
+  return config.stop_at_optimum && problem->hasKnownOptimum() && bsf_fitness - optimum < epsilon;
+}
+
+// Called once when run() ends: remembers the evaluations used and gives the
+// checkpoints past an early stop the final error.
+void searchAlgorithm::finishRun(unsigned int nfes, Fitness bsf_fitness) {
+  termination_evaluations = nfes;
+  while (checkpoint_errors.size() < config.checkpoint_evaluations.size()) {
     checkpoint_errors.push_back(bsf_fitness - optimum);
   }
 }

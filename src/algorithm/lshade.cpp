@@ -56,7 +56,7 @@ Fitness LSHADE::run() {
     //   cout << bsf_fitness - optimum << endl; 
     // }
 
-    if (nfes >= max_num_evaluations) break;
+    if (shouldStop(nfes, bsf_fitness)) break;
   }
   ////////////////////////////////////////////////////////////////////////////
 
@@ -101,7 +101,7 @@ Fitness LSHADE::run() {
   int plan_pop_size;
 
   //main loop
-  while (nfes < max_num_evaluations) {
+  while (!shouldStop(nfes, bsf_fitness)) {
     for (int i = 0; i < pop_size; i++) sorted_array[i] = i;
     for (int i = 0; i < pop_size; i++) temp_fit[i] = fitness[i];
     sortIndexWithQuickSort(&temp_fit[0], 0, pop_size - 1, sorted_array);
@@ -160,7 +160,7 @@ Fitness LSHADE::run() {
       // //      cout << nfes << " " << bsf_fitness - optimum << endl; 
       // 	cout << bsf_fitness - optimum << endl; 
       // }
-      if (nfes >= max_num_evaluations) break;
+      if (shouldStop(nfes, bsf_fitness)) break;
     }
     ////////////////////////////////////////////////////////////////////////////
 
@@ -263,6 +263,7 @@ Fitness LSHADE::run() {
     }
   }
 
+  finishRun(nfes, bsf_fitness);
   return bsf_fitness - optimum;
 }
 

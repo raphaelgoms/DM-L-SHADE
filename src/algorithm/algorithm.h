@@ -33,9 +33,12 @@ struct SHADEConfig {
   double arc_rate;
   double p_best_rate;
   int memory_size;
-  // Fractions of max_num_evaluations at which run() records the best error
+  // Evaluation counts (ascending) at which run() records the best error
   // found so far (see checkpointErrors()). Empty means no recording.
-  vector<double> checkpoint_fractions;
+  vector<unsigned int> checkpoint_evaluations;
+  // Stop as soon as the error drops below 1e-8 (CEC-2022 rules) instead of
+  // always using the whole budget. Needs a problem with a known optimum.
+  bool stop_at_optimum = false;
 };
 
 class searchAlgorithm {
@@ -47,13 +50,18 @@ public:
   virtual Fitness run() = 0;
 
   // Best error (best fitness - known optimum) after each of
-  // config.checkpoint_fractions of the evaluation budget, filled by run().
+  // config.checkpoint_evaluations, filled by run(). Checkpoints after an
+  // early stop hold the final error.
   const vector<Fitness> &checkpointErrors() const { return checkpoint_errors; }
+  // Number of evaluations used when run() stopped (FE_term in CEC-2022).
+  unsigned int terminationEvaluations() const { return termination_evaluations; }
 protected:
   void evaluatePopulation(const vector<Individual> &pop, vector<Fitness> &fitness);
 
   void initializeParameters();
   void recordCheckpoints(unsigned int nfes, Fitness bsf_fitness);
+  bool shouldStop(unsigned int nfes, Fitness bsf_fitness) const;
+  void finishRun(unsigned int nfes, Fitness bsf_fitness);
   Individual makeNewIndividual();
   void modifySolutionWithParentMedium(Individual child, Individual parent);
   void setBestSolution(const vector<Individual> &pop, const vector<Fitness> &fitness, Individual &bsf_solution, Fitness &bsf_fitness);
@@ -121,10 +129,9 @@ protected:
   unsigned int max_num_evaluations;
   int pop_size;
 
-  // Evaluation counts at which the best error is recorded, and what was
-  // recorded so far.
-  vector<unsigned int> checkpoint_evaluations;
+  // Best errors recorded so far at config.checkpoint_evaluations.
   vector<Fitness> checkpoint_errors;
+  unsigned int termination_evaluations;
 };
 
 class LSHADE: public searchAlgorithm {

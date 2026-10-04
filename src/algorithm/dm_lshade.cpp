@@ -76,7 +76,7 @@ Fitness DMLSHADE::run()
         //   cout << bsf_fitness - optimum << endl;
         // }
 
-        if (nfes >= max_num_evaluations)
+        if (shouldStop(nfes, bsf_fitness))
             break;
     }
     ////////////////////////////////////////////////////////////////////////////
@@ -128,7 +128,7 @@ Fitness DMLSHADE::run()
     vector<map<int, double>> patterns;
 
     // main loop
-    while (nfes < max_num_evaluations)
+    while (!shouldStop(nfes, bsf_fitness))
     {
         generation++;
         for (int i = 0; i < pop_size; i++)
@@ -217,7 +217,7 @@ Fitness DMLSHADE::run()
             // //      cout << nfes << " " << bsf_fitness - optimum << endl;
             // 	cout << bsf_fitness - optimum << endl;
             // }
-            if (nfes >= max_num_evaluations)
+            if (shouldStop(nfes, bsf_fitness))
                 break;
         }
         ////////////////////////////////////////////////////////////////////////////
@@ -329,6 +329,7 @@ Fitness DMLSHADE::run()
         }
     }
 
+    finishRun(nfes, bsf_fitness);
     return bsf_fitness - optimum;
 }
 

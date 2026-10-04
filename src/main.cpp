@@ -43,6 +43,31 @@ static const double kCEC14CheckpointFractions[] = {
   0.01, 0.02, 0.03, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0
 };
 
+// MaxFES of each suite: 10000*D for CEC-2014; fixed per dimension for CEC-2022.
+static unsigned int benchmarkMaxEvaluations(BenchmarkType benchmark_type, int dimension) {
+  if (benchmark_type == BenchmarkType::CEC2022) return dimension == 20 ? 1000000 : 200000;
+  return dimension * 10000;
+}
+
+// Evaluation counts at which each suite's rules record the error: the
+// fractions above of MaxFES for CEC-2014, and floor(D^(k/5-3) * MaxFES),
+// k = 0..15, for CEC-2022.
+static vector<unsigned int> benchmarkCheckpoints(BenchmarkType benchmark_type, int dimension, unsigned int max_evaluations) {
+  vector<unsigned int> checkpoints;
+  if (benchmark_type == BenchmarkType::CEC2022) {
+    for (int k = 0; k <= 15; k++) {
+      // The small offset keeps exact products (e.g. 10^-2 * 200000) from
+      // flooring one below because of rounding in pow().
+      checkpoints.push_back((unsigned int)floor(pow(dimension, k / 5.0 - 3) * max_evaluations + 1e-6));
+    }
+  } else {
+    for (double fraction : kCEC14CheckpointFractions) {
+      checkpoints.push_back((unsigned int)llround(fraction * max_evaluations));
+    }
+  }
+  return checkpoints;
+}
+
 static shared_ptr<Problem> createBenchmarkProblem(BenchmarkType benchmark_type, int function_number, int problem_size) {
   switch (benchmark_type) {
     case BenchmarkType::CEC2022:
@@ -56,12 +81,14 @@ static shared_ptr<Problem> createBenchmarkProblem(BenchmarkType benchmark_type, 
 static void runBenchmark(BenchmarkType benchmark_type, AlgorithmType algorithm_type, int function_start, int function_end, int problem_size, int num_runs, bool show_time, bool record_checkpoints) {
   SHADEConfig config;
   config.pop_size = (int)round(problem_size * 18);
-  config.max_num_evaluations = problem_size * 10000;
+  config.max_num_evaluations = benchmarkMaxEvaluations(benchmark_type, problem_size);
   config.memory_size = 6;
   config.arc_rate = 2.6;
   config.p_best_rate = 0.11;
+  // CEC-2022 rules: a run ends when the error drops below 1e-8.
+  config.stop_at_optimum = benchmark_type == BenchmarkType::CEC2022;
   if (record_checkpoints) {
-    config.checkpoint_fractions.assign(std::begin(kCEC14CheckpointFractions), std::end(kCEC14CheckpointFractions));
+    config.checkpoint_evaluations = benchmarkCheckpoints(benchmark_type, problem_size, config.max_num_evaluations);
   }
 
   // A single run prints only its error value, so callers (e.g. the scripts
@@ -84,11 +111,13 @@ static void runBenchmark(BenchmarkType benchmark_type, AlgorithmType algorithm_t
       searchAlgorithm *alg = createAlgorithm(algorithm_type, problem, config);
       bsf_fitness_array[j] = runAlgorithm(alg, show_time);
       if (record_checkpoints) {
-        // One line with the error at each checkpoint; the last one is the final error.
+        // One line with the error at each checkpoint; the last one is the
+        // final error. CEC-2022 also records the evaluations used (FE_term).
         const vector<Fitness> &checkpoint_errors = alg->checkpointErrors();
         for (size_t k = 0; k < checkpoint_errors.size(); k++) {
           cout << (k ? " " : "") << checkpoint_errors[k];
         }
+        if (benchmark_type == BenchmarkType::CEC2022) cout << " " << alg->terminationEvaluations();
         cout << endl;
       }
       else if (single_run) cout << bsf_fitness_array[j] << endl;
