@@ -1,0 +1,945 @@
+<title>__REPORT_TITLE__</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column of a results report; the convergence figure and wide tables
+   may use the full column, tables scroll inside their own frame on narrow screens. */
+:root {
+  --bg: #f5f6f8;
+  --surface: #fcfcfd;
+  --ink: #14171c;
+  --ink-2: #485060;
+  --ink-3: #737b8a;
+  --rule: #dde1e7;
+  --rule-strong: #c4cad3;
+  --hover: #eef1f5;
+  --series-1: #2a78d6;   /* L-SHADE */
+  --series-2: #eb6834;   /* DM-L-SHADE */
+  --ours: var(--series-2); /* highlighted rows of our algorithms */
+  --good: #1d7a48;
+  --good-bg: #e3f3ea;
+  --bad: #b3261e;
+  --bad-bg: #fbe7e5;
+  --tie-bg: #eceef2;
+  --font-display: "Newsreader", "Iowan Old Style", Georgia, serif;
+  --font-body: "Public Sans", "Segoe UI", system-ui, sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --step--1: 0.8125rem;
+  --step-0: 0.9375rem;
+  --step-1: 1.125rem;
+  --step-2: 1.5rem;
+  --step-3: 2.25rem;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1114; --surface: #16181c; --ink: #eef0f3; --ink-2: #b3b9c4; --ink-3: #868d9a;
+    --rule: #2a2e35; --rule-strong: #3a3f48; --hover: #1e2127;
+    --series-1: #3987e5; --series-2: #d95926;
+    --good: #5cc795; --good-bg: #16301f; --bad: #f08a80; --bad-bg: #3a1a18; --tie-bg: #24272d;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1114; --surface: #16181c; --ink: #eef0f3; --ink-2: #b3b9c4; --ink-3: #868d9a;
+  --rule: #2a2e35; --rule-strong: #3a3f48; --hover: #1e2127;
+  --series-1: #3987e5; --series-2: #d95926;
+  --good: #5cc795; --good-bg: #16301f; --bad: #f08a80; --bad-bg: #3a1a18; --tie-bg: #24272d;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: var(--step-0);
+  line-height: 1.55;
+}
+.page {
+  max-width: 68rem;
+  margin: 0 auto;
+  padding-inline: clamp(16px, 4vw, 40px);
+  padding-block: 2.5rem 4rem;
+  display: grid;
+  gap: 3rem;
+}
+h1, h2 { font-family: var(--font-display); font-weight: 600; text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
+h1 { font-size: var(--step-3); line-height: 1.1; }
+h2 { font-size: var(--step-2); line-height: 1.2; }
+p { margin: 0; max-width: 65ch; }
+.eyebrow {
+  font-size: var(--step--1);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-3);
+  font-weight: 600;
+}
+.muted { color: var(--ink-2); }
+.num { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--series-1); outline-offset: 2px; }
+
+/* Header */
+header { display: grid; gap: 1.25rem; }
+header .lede { color: var(--ink-2); font-size: var(--step-1); }
+.spec {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+  gap: 0;
+  margin: 0;
+  border-top: 1px solid var(--rule-strong);
+  border-bottom: 1px solid var(--rule);
+}
+.spec div { padding: 0.75rem 1rem 0.75rem 0; display: grid; gap: 0.15rem; }
+.spec dt { font-size: var(--step--1); color: var(--ink-3); }
+.spec dd { margin: 0; font-family: var(--font-data); font-size: var(--step-0); }
+
+/* Section heads */
+section { display: grid; gap: 1.25rem; min-width: 0; }
+.section-head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 0.75rem 1.5rem; }
+.section-head > div:not(.segmented) { display: grid; gap: 0.35rem; min-width: 0; }
+
+/* Segmented controls */
+.segmented { display: inline-flex; border: 1px solid var(--rule-strong); border-radius: 6px; overflow: hidden; background: var(--surface); }
+.segmented button {
+  border: 0; background: transparent; padding: 0.4rem 0.85rem; cursor: pointer;
+  font-size: var(--step--1); font-weight: 500; color: var(--ink-2);
+}
+.segmented button + button { border-left: 1px solid var(--rule); }
+.segmented button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+.segmented button:disabled { cursor: not-allowed; color: var(--ink-3); opacity: 0.6; }
+.segmented button:not(:disabled):not([aria-pressed="true"]):hover { background: var(--hover); }
+
+/* Summary */
+.summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 1rem; }
+.figure-box { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 1.1rem 1.25rem; display: grid; gap: 0.6rem; align-content: start; }
+.figure-box .label { font-size: var(--step--1); color: var(--ink-3); }
+.wtl { display: flex; gap: 1.25rem; align-items: baseline; flex-wrap: wrap; }
+.wtl span { display: grid; }
+.wtl b { font-family: var(--font-data); font-size: var(--step-3); font-weight: 500; line-height: 1; }
+.wtl small { font-size: var(--step--1); color: var(--ink-2); }
+.wtl .w b { color: var(--good); }
+.wtl .l b { color: var(--bad); }
+.score-rows { display: grid; gap: 0.45rem; }
+.score-row { display: grid; grid-template-columns: 7.5rem 1fr auto; gap: 0.6rem; align-items: center; }
+.score-row .name { font-size: var(--step--1); color: var(--ink-2); display: flex; align-items: center; gap: 0.4rem; }
+.score-track { height: 8px; background: var(--tie-bg); border-radius: 4px; overflow: hidden; }
+.score-fill { height: 100%; border-radius: 4px; }
+.score-row .num { font-size: var(--step-0); }
+.figure-box .note { font-size: var(--step--1); color: var(--ink-3); }
+
+.swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; flex: none; }
+.s1 { background: var(--series-1); }
+.s2 { background: var(--series-2); }
+
+/* Result chips */
+.chip {
+  display: inline-flex; align-items: center; gap: 0.3rem; border-radius: 999px;
+  padding: 0.05rem 0.55rem; font-size: var(--step--1); font-weight: 500; white-space: nowrap;
+}
+.chip.better { background: var(--good-bg); color: var(--good); }
+.chip.worse { background: var(--bad-bg); color: var(--bad); }
+.chip.tie { background: var(--tie-bg); color: var(--ink-2); }
+.chip b { font-family: var(--font-data); font-weight: 600; }
+
+/* Convergence */
+.conv { display: grid; grid-template-columns: minmax(0, 1fr) 17rem; gap: 1.25rem; align-items: start; }
+@media (max-width: 860px) { .conv { grid-template-columns: minmax(0, 1fr); } }
+.picker { display: grid; gap: 0.5rem; }
+.picker-group { display: grid; grid-template-columns: 9.5rem 1fr; gap: 0.5rem; align-items: center; }
+@media (max-width: 560px) { .picker-group { grid-template-columns: 1fr; gap: 0.25rem; } }
+.picker-group .eyebrow { font-size: 0.72rem; }
+.picker-fns { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.fn-btn {
+  border: 1px solid var(--rule-strong); background: var(--surface); border-radius: 5px;
+  min-width: 2.6rem; padding: 0.2rem 0.45rem; cursor: pointer; font-family: var(--font-data);
+  font-size: var(--step--1); display: inline-flex; align-items: center; justify-content: center; gap: 0.25rem;
+}
+.fn-btn:hover { background: var(--hover); }
+.fn-btn[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.fn-btn .mark { font-weight: 600; }
+.fn-btn .mark.better { color: var(--good); }
+.fn-btn .mark.worse { color: var(--bad); }
+.fn-btn[aria-pressed="true"] .mark { color: inherit; }
+
+.chart-card { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 1rem 1rem 0.5rem; display: grid; gap: 0.5rem; min-width: 0; }
+.chart-top { display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem 1rem; flex-wrap: wrap; }
+.chart-title { font-family: var(--font-display); font-size: var(--step-1); font-weight: 600; }
+.legend { display: flex; gap: 1rem; flex-wrap: wrap; font-size: var(--step--1); color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 0.4rem; }
+.legend .band { width: 18px; height: 10px; border-radius: 2px; opacity: 0.25; }
+.chart-wrap { position: relative; }
+.chart-wrap svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart-wrap svg text { font-family: var(--font-data); font-size: 11px; fill: var(--ink-3); }
+.chart-wrap svg .axis-title { font-family: var(--font-body); font-size: 11.5px; fill: var(--ink-2); }
+.tooltip {
+  position: absolute; pointer-events: none; background: var(--surface); border: 1px solid var(--rule-strong);
+  border-radius: 6px; padding: 0.55rem 0.7rem; font-size: var(--step--1); box-shadow: 0 6px 20px rgb(0 0 0 / 0.12);
+  display: grid; gap: 0.3rem; min-width: 13rem; z-index: 2;
+}
+.tooltip .t-head { color: var(--ink-2); }
+.tooltip .t-row { display: grid; grid-template-columns: auto 1fr auto; gap: 0.45rem; align-items: center; }
+.tooltip .t-iqr { grid-column: 2 / 4; color: var(--ink-3); margin-top: -0.25rem; }
+
+.facts { display: grid; gap: 1rem; align-content: start; }
+.facts h3 { margin: 0; font-family: var(--font-display); font-size: var(--step-1); font-weight: 600; line-height: 1.25; }
+.facts .sub { font-size: var(--step--1); color: var(--ink-3); }
+.fact-alg { display: grid; gap: 0.3rem; padding-top: 0.75rem; border-top: 1px solid var(--rule); }
+.fact-alg .who { display: flex; align-items: center; gap: 0.45rem; font-weight: 600; font-size: var(--step--1); }
+.fact-alg dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 0.15rem 0.75rem; font-size: var(--step--1); }
+.fact-alg dt { color: var(--ink-3); }
+.fact-alg dd { margin: 0; text-align: right; font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+
+/* Tables */
+.table-frame { overflow-x: auto; background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; }
+table { border-collapse: collapse; width: 100%; font-size: var(--step--1); }
+caption { caption-side: top; text-align: left; padding: 0.85rem 1rem 0.35rem; font-family: var(--font-display); font-size: var(--step-0); font-weight: 600; color: var(--ink); }
+th, td { padding: 0.45rem 0.75rem; text-align: right; white-space: nowrap; }
+th { font-weight: 600; color: var(--ink-2); border-bottom: 1px solid var(--rule-strong); vertical-align: bottom; }
+td { border-bottom: 1px solid var(--rule); font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+th.l, td.l { text-align: left; }
+td.text { font-family: var(--font-body); }
+td.c, th.c { text-align: center; }
+tbody tr:last-child td { border-bottom: 0; }
+tr.group td { background: var(--bg); font-family: var(--font-body); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-3); font-weight: 600; text-align: left; padding-block: 0.35rem; }
+tr.row { cursor: pointer; }
+tr.row:hover td { background: var(--hover); }
+tr.row.selected td { background: var(--hover); }
+tr.row.selected td:first-child { box-shadow: inset 3px 0 0 var(--ink); }
+.lower { color: var(--ink); font-weight: 500; }
+.higher { color: var(--ink-3); }
+.std { color: var(--ink-3); }
+.th-alg { display: inline-flex; align-items: center; gap: 0.35rem; }
+
+/* Competition ranking */
+table.rank td.pos { font-family: var(--font-display); font-size: var(--step-1); font-weight: 600; text-align: left; width: 3rem; }
+table.rank td.alg { font-family: var(--font-body); text-align: left; white-space: normal; min-width: 14rem; }
+table.rank td.alg small { display: block; color: var(--ink-3); font-size: 0.75rem; line-height: 1.35; }
+table.rank .dimrank { color: var(--ink-3); font-size: 0.72rem; margin-left: 0.3rem; }
+table.rank tr.ours td { background: var(--hover); }
+table.rank tr.ours td:first-child { box-shadow: inset 3px 0 0 var(--ours); }
+table.rank tr.ours td.alg { font-weight: 600; }
+.tbar { display: block; height: 6px; border-radius: 3px; background: var(--ink-3); opacity: 0.5; min-width: 2px; }
+tr.ours .tbar { background: var(--ours); opacity: 1; }
+td.bar-cell { width: 18%; min-width: 7rem; }
+.h2h { display: inline-flex; align-items: center; gap: 0.5rem; }
+.h2h .track { position: relative; width: 4.5rem; height: 6px; border-radius: 3px; background: var(--tie-bg); overflow: hidden; }
+.h2h .track i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--series-2); }
+.h2h .track::after { content: ""; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 2px; background: var(--surface); }
+.wl { display: inline-block; margin-right: 0.9rem; white-space: nowrap; font-family: var(--font-data); }
+.wl b { font-weight: 500; }
+.good-t { color: var(--good); }
+.bad-t { color: var(--bad); }
+.foot { display: grid; gap: 0.5rem; font-size: var(--step--1); color: var(--ink-2); }
+.foot p { max-width: 80ch; }
+
+/* Notes */
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); gap: 1.5rem 2.5rem; }
+.notes > div { display: grid; gap: 0.6rem; align-content: start; min-width: 0; }
+.notes h3 { margin: 0; font-size: var(--step-0); font-weight: 600; }
+.notes ul { margin: 0; padding-left: 1.1rem; display: grid; gap: 0.4rem; color: var(--ink-2); }
+.pending { display: inline-block; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; color: var(--ink-3); border: 1px solid var(--rule-strong); border-radius: 4px; padding: 0 0.35rem; margin-right: 0.35rem; }
+footer { font-size: var(--step--1); color: var(--ink-3); border-top: 1px solid var(--rule); padding-top: 1rem; }
+code { font-family: var(--font-data); font-size: 0.9em; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .score-fill { transition: width 300ms ease; }
+}
+</style>
+
+<div class="page">
+  <header>
+    <div class="eyebrow" id="eyebrow"></div>
+    <h1 id="title"></h1>
+    <p class="lede" id="lede"></p>
+    <dl class="spec" id="spec"></dl>
+  </header>
+
+  <section aria-labelledby="summary-h">
+    <div class="section-head">
+      <div>
+        <div class="eyebrow">Summary</div>
+        <h2 id="summary-h">DM-L-SHADE against L-SHADE</h2>
+      </div>
+      <div class="segmented" id="dim-switch" role="group" aria-label="Dimension"></div>
+    </div>
+    <div class="summary">
+      <div class="figure-box">
+        <div class="label" id="wtl-label"></div>
+        <div class="wtl" id="wtl"></div>
+        <div class="note" id="wtl-note"></div>
+      </div>
+      <div class="figure-box" id="score-box">
+        <div class="label" id="score-label"></div>
+        <div class="score-rows" id="score-rows"></div>
+        <div class="note" id="score-note"></div>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="rank-h" id="ranking-section" hidden>
+    <div class="section-head">
+      <div>
+        <div class="eyebrow">Competition</div>
+        <h2 id="rank-h"></h2>
+        <p class="muted" id="rank-desc"></p>
+      </div>
+      <div class="segmented" id="rank-mode" role="group" aria-label="Algorithms included"></div>
+    </div>
+    <div class="table-frame">
+      <table class="rank" id="rank-table"></table>
+    </div>
+    <div class="foot" id="rank-foot"></div>
+  </section>
+
+  <section aria-labelledby="conv-h">
+    <div class="section-head">
+      <div>
+        <div class="eyebrow">Convergence</div>
+        <h2 id="conv-h">Error over the run</h2>
+        <p class="muted" id="conv-desc"></p>
+      </div>
+    </div>
+    <div class="picker" id="picker"></div>
+    <div class="conv">
+      <div class="chart-card">
+        <div class="chart-top">
+          <div class="chart-title" id="chart-title"></div>
+          <div class="legend">
+            <span><i class="swatch s1"></i>L-SHADE</span>
+            <span><i class="swatch s2"></i>DM-L-SHADE</span>
+            <span><i class="band s1"></i><i class="band s2" style="margin-left:-0.3rem"></i>interquartile range</span>
+          </div>
+        </div>
+        <div class="chart-wrap" id="chart-wrap" tabindex="0" aria-label="Convergence chart. Use the left and right arrow keys to step through the recording points."></div>
+      </div>
+      <aside class="facts" id="facts" aria-live="polite"></aside>
+    </div>
+  </section>
+
+  <section aria-labelledby="cmp-h">
+    <div class="section-head">
+      <div>
+        <div class="eyebrow">Comparison</div>
+        <h2 id="cmp-h">Function by function</h2>
+        <p class="muted" id="cmp-desc"></p>
+      </div>
+    </div>
+    <div class="table-frame">
+      <table id="cmp-table"></table>
+    </div>
+  </section>
+
+  <section aria-labelledby="tables-h">
+    <div class="section-head">
+      <div>
+        <div class="eyebrow">Results tables</div>
+        <h2 id="tables-h"></h2>
+        <p class="muted">In the layout of the results template of the rules.</p>
+      </div>
+      <div class="segmented" id="alg-switch" role="group" aria-label="Algorithm"></div>
+    </div>
+    <div class="table-frame">
+      <table id="res-table"></table>
+    </div>
+  </section>
+
+  <section aria-labelledby="notes-h">
+    <div class="section-head">
+      <div>
+        <div class="eyebrow">Method</div>
+        <h2 id="notes-h">Setup and notes</h2>
+      </div>
+    </div>
+    <div class="notes">
+      <div>
+        <h3>Experimental setting</h3>
+        <ul id="setting"></ul>
+      </div>
+      <div>
+        <h3>Notes on reading the results</h3>
+        <ul id="notes"></ul>
+      </div>
+      <div>
+        <h3>Still to do for a full submission</h3>
+        <ul id="todo"></ul>
+      </div>
+    </div>
+  </section>
+
+  <footer id="footer"></footer>
+</div>
+
+<script>
+const DATA = /*__REPORT_DATA__*/null;
+
+const SUITE = DATA.suite;
+const [BASE, CAND] = DATA.algorithms;
+const SERIES = { [BASE]: "s1", [CAND]: "s2" };
+const SERIES_VAR = { [BASE]: "var(--series-1)", [CAND]: "var(--series-2)" };
+const FLOOR = 1e-8;
+const NAMES = SUITE.names;
+const GROUPS = SUITE.groups.map(([name, fns]) => ({ name, fns }));
+const groupOf = f => (GROUPS.find(g => g.fns.includes(f)) || { name: "" }).name;
+
+const state = {
+  dim: DATA.dimensions[0].dim,
+  fn: null,
+  alg: CAND,
+  hover: null,
+};
+
+/* ---------- formatting ---------- */
+function fmtE(v) {
+  if (v === 0) return "0.00E+00";
+  const [m, e] = v.toExponential(2).split("e");
+  const n = parseInt(e, 10);
+  return `${m}E${n < 0 ? "-" : "+"}${String(Math.abs(n)).padStart(2, "0")}`;
+}
+function fmtP(p) { return p < 1e-4 ? "<0.0001" : p.toFixed(4); }
+function fmtPct(fraction) {
+  const pct = fraction * 100;
+  if (pct >= 1) return `${+pct.toFixed(1)}%`;
+  return `${+pct.toPrecision(2)}%`;
+}
+const SUP = { "-": "⁻", "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴", "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹" };
+const pow10 = k => "10" + String(k).split("").map(c => SUP[c]).join("");
+const intFmt = new Intl.NumberFormat("en-US");
+const el = (tag, attrs = {}, html = "") => {
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+  if (html) node.innerHTML = html;
+  return node;
+};
+const resultChip = (symbol, withText = true) => {
+  const cls = symbol === "+" ? "better" : symbol === "-" ? "worse" : "tie";
+  const text = symbol === "+" ? "better" : symbol === "-" ? "worse" : "no difference";
+  const sym = symbol === "-" ? "−" : symbol;
+  return `<span class="chip ${cls}"><b>${sym}</b>${withText ? text : ""}</span>`;
+};
+const dimReport = () => DATA.dimensions.find(d => d.dim === state.dim);
+const fnEntry = () => dimReport().functions.find(e => e.f === state.fn) || dimReport().functions[0];
+
+/* ---------- header ---------- */
+function renderHeader() {
+  document.getElementById("eyebrow").textContent = `${SUITE.name} · ${SUITE.subtitle}`;
+  document.getElementById("title").textContent = `DM-L-SHADE on ${SUITE.name}`;
+  document.getElementById("lede").innerHTML =
+    `Results of DM-L-SHADE (L-SHADE hybridized with pattern mining by clustering) against plain L-SHADE, ${SUITE.lede}`;
+
+  const dims = DATA.dimensions.map(d => d.dim);
+  const items = [
+    ["Dimensions collected", dims.map(d => d + "D").join(", ") + ` of ${SUITE.dims.length}`],
+    ["Functions", SUITE.functionsLabel],
+    ["Runs per function", DATA.dimensions[0].runs],
+    ["MaxFES", DATA.dimensions.map(d => intFmt.format(d.maxfes)).join(" / ")],
+    ["Termination", SUITE.stopsAtTarget ? "MaxFES or error < 1e-8" : "MaxFES"],
+    ["Report generated", DATA.generated],
+  ];
+  document.getElementById("spec").innerHTML = items
+    .map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join("");
+}
+
+function renderDimSwitch() {
+  const box = document.getElementById("dim-switch");
+  box.innerHTML = "";
+  for (const d of SUITE.dims) {
+    const have = DATA.dimensions.some(r => r.dim === d);
+    const b = el("button", { type: "button", "aria-pressed": String(d === state.dim) }, `${d}D`);
+    if (!have) { b.disabled = true; b.title = `${d}D has not been collected yet`; }
+    b.addEventListener("click", () => { state.dim = d; renderAll(); });
+    box.appendChild(b);
+  }
+}
+
+/* ---------- summary ---------- */
+function renderSummary() {
+  const rep = dimReport();
+  const counts = { "+": 0, "=": 0, "-": 0 };
+  rep.functions.forEach(e => counts[e.symbol]++);
+  document.getElementById("wtl-label").textContent =
+    `Wilcoxon rank-sum test at D = ${rep.dim}, α = ${DATA.alpha}, ${rep.functions.length} functions`;
+  document.getElementById("wtl").innerHTML = `
+    <span class="w"><b>${counts["+"]}</b><small>better</small></span>
+    <span class="t"><b>${counts["="]}</b><small>no significant difference</small></span>
+    <span class="l"><b>${counts["-"]}</b><small>worse</small></span>`;
+  const better = rep.functions.filter(e => e.symbol === "+").map(e => "F" + e.f);
+  const worse = rep.functions.filter(e => e.symbol === "-").map(e => "F" + e.f);
+  const parts = [];
+  if (better.length) parts.push(`DM-L-SHADE is significantly better on ${better.join(", ")}`);
+  if (worse.length) parts.push(`${better.length ? "" : "DM-L-SHADE is "}significantly worse on ${worse.join(", ")}`);
+  document.getElementById("wtl-note").textContent = parts.length ? parts.join("; ") + "." : "No significant differences.";
+
+  // CEC 2017 scores all dimensions together; CEC 2022 scores each one; CEC 2014 has no score.
+  const score = rep.score || DATA.score;
+  const box = document.getElementById("score-box");
+  box.hidden = !score;
+  if (!score) return;
+  document.getElementById("score-label").textContent = score.label;
+  document.getElementById("score-rows").innerHTML = DATA.algorithms.map(name => {
+    const v = score.values[name];
+    return `<div class="score-row">
+      <span class="name"><i class="swatch ${SERIES[name]}"></i>${name}</span>
+      <span class="score-track"><span class="score-fill ${SERIES[name]}" style="display:block;width:${(100 * v / score.max).toFixed(2)}%"></span></span>
+      <span class="num">${v.toLocaleString("en-US", { minimumFractionDigits: score.digits, maximumFractionDigits: score.digits })}</span>
+    </div>`;
+  }).join("");
+  document.getElementById("score-note").textContent = score.note;
+}
+
+/* ---------- convergence ---------- */
+function renderPicker() {
+  const rep = dimReport();
+  const byFn = Object.fromEntries(rep.functions.map(e => [e.f, e]));
+  const box = document.getElementById("picker");
+  box.innerHTML = "";
+  for (const g of GROUPS) {
+    const present = g.fns.filter(f => byFn[f]);
+    if (!present.length) continue;
+    const row = el("div", { class: "picker-group" });
+    row.appendChild(el("div", { class: "eyebrow" }, g.name));
+    const fns = el("div", { class: "picker-fns" });
+    for (const f of present) {
+      const e = byFn[f];
+      const markCls = e.symbol === "+" ? "better" : e.symbol === "-" ? "worse" : "";
+      const mark = e.symbol === "=" ? "" : `<span class="mark ${markCls}">${e.symbol === "-" ? "−" : "+"}</span>`;
+      const b = el("button", {
+        type: "button", class: "fn-btn", "aria-pressed": String(f === state.fn),
+        title: `F${f} ${NAMES[f]}`, "aria-label": `F${f} ${NAMES[f]}`,
+      }, `F${f}${mark}`);
+      b.addEventListener("click", () => selectFn(f));
+      fns.appendChild(b);
+    }
+    row.appendChild(fns);
+    box.appendChild(row);
+  }
+}
+
+function selectFn(f, scroll = false) {
+  state.fn = f;
+  state.hover = null;
+  renderPicker();
+  renderChart();
+  renderFacts();
+  renderCompare();
+  if (scroll) document.getElementById("conv-h").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+}
+
+function xTicks(minFraction) {
+  // 1-2-5 ticks over short spans, one tick per decade over long ones.
+  const lo = Math.log10(minFraction);
+  const steps = -lo > 2.5 ? [1] : [1, 2, 5];
+  const ticks = [];
+  for (let k = Math.floor(lo); k <= 0; k++) {
+    for (const s of steps) {
+      const t = s * 10 ** k;
+      if (t >= minFraction * 0.999 && t <= 1.0001) ticks.push(t);
+    }
+  }
+  return ticks;
+}
+
+const geom = {};
+function renderChart() {
+  const entry = fnEntry();
+  const rep = dimReport();
+  document.getElementById("chart-title").textContent = `F${entry.f} · ${NAMES[entry.f]} · ${rep.dim}D`;
+
+  const wrap = document.getElementById("chart-wrap");
+  const W = Math.max(300, wrap.clientWidth || 640);
+  const H = W < 520 ? 260 : 320;
+  const m = { l: 52, r: 14, t: 14, b: 44 };
+  const iw = W - m.l - m.r, ih = H - m.t - m.b;
+
+  const fr = rep.checkpoints.map(c => c / rep.maxfes);
+  const xlo = Math.log10(fr[0]);
+  const clamp = v => Math.max(v, FLOOR);
+  const vals = [];
+  for (const name of DATA.algorithms) entry.stats[name].curve.forEach(q => q.forEach(v => vals.push(clamp(v))));
+  let lo = Math.floor(Math.log10(Math.min(...vals)));
+  let hi = Math.ceil(Math.log10(Math.max(...vals)));
+  if (hi <= lo) hi = lo + 1;
+  lo = Math.max(lo, -8);
+
+  const x = frac => m.l + ((Math.log10(frac) - xlo) / -xlo) * iw;
+  const y = v => m.t + ih - ((Math.log10(clamp(v)) - lo) / (hi - lo)) * ih;
+  Object.assign(geom, { x, y, m, iw, ih, W, H, fr });
+
+  const step = Math.max(1, Math.ceil((hi - lo) / 6));
+  let svg = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Median error of both algorithms over the run, log scale">`;
+  for (let k = lo; k <= hi; k += step) {
+    const yy = y(10 ** k);
+    svg += `<line x1="${m.l}" x2="${m.l + iw}" y1="${yy}" y2="${yy}" stroke="var(--rule)" stroke-width="1"/>`;
+    const label = k === -8 ? "≤" + pow10(k) : pow10(k);
+    svg += `<text x="${m.l - 8}" y="${yy + 4}" text-anchor="end">${label}</text>`;
+  }
+  for (const t of xTicks(fr[0])) {
+    const xx = x(t);
+    svg += `<line x1="${xx}" x2="${xx}" y1="${m.t + ih}" y2="${m.t + ih + 5}" stroke="var(--rule-strong)"/>`;
+    svg += `<text x="${xx}" y="${m.t + ih + 18}" text-anchor="middle">${fmtPct(t)}</text>`;
+  }
+  svg += `<line x1="${m.l}" x2="${m.l + iw}" y1="${m.t + ih}" y2="${m.t + ih}" stroke="var(--rule-strong)"/>`;
+  svg += `<text class="axis-title" x="${m.l + iw / 2}" y="${H - 6}" text-anchor="middle">Evaluations used, % of MaxFES (${intFmt.format(rep.maxfes)})</text>`;
+
+  for (const name of DATA.algorithms) {
+    const c = entry.stats[name].curve;
+    const top = c.map((q, i) => `${x(fr[i])},${y(q[2])}`);
+    const bot = c.map((q, i) => `${x(fr[i])},${y(q[0])}`).reverse();
+    svg += `<polygon points="${top.concat(bot).join(" ")}" fill="${SERIES_VAR[name]}" fill-opacity="0.14" stroke="none"/>`;
+  }
+  for (const name of DATA.algorithms) {
+    const c = entry.stats[name].curve;
+    const d = c.map((q, i) => `${i ? "L" : "M"}${x(fr[i])},${y(q[1])}`).join("");
+    svg += `<path d="${d}" fill="none" stroke="${SERIES_VAR[name]}" stroke-width="2" stroke-linejoin="round"/>`;
+  }
+  svg += `<g id="hover-layer"></g>`;
+  for (const name of DATA.algorithms) {
+    entry.stats[name].curve.forEach((q, i) => {
+      svg += `<circle cx="${x(fr[i])}" cy="${y(q[1])}" r="4" fill="${SERIES_VAR[name]}" stroke="var(--surface)" stroke-width="2"/>`;
+    });
+  }
+  svg += `<rect id="hit" x="${m.l}" y="${m.t}" width="${iw}" height="${ih}" fill="transparent"/>`;
+  svg += `</svg>`;
+  wrap.innerHTML = svg + `<div class="tooltip" id="tooltip" hidden></div>`;
+
+  const hit = wrap.querySelector("#hit");
+  const pick = evt => {
+    const rect = wrap.querySelector("svg").getBoundingClientRect();
+    const px = (evt.clientX - rect.left) * (W / rect.width);
+    let best = 0, dist = Infinity;
+    fr.forEach((f, i) => { const d = Math.abs(x(f) - px); if (d < dist) { dist = d; best = i; } });
+    showHover(best);
+  };
+  hit.addEventListener("pointermove", pick);
+  hit.addEventListener("pointerdown", pick);
+  hit.addEventListener("pointerleave", () => showHover(null));
+  if (state.hover !== null) showHover(state.hover);
+}
+
+function showHover(i) {
+  state.hover = i;
+  const wrap = document.getElementById("chart-wrap");
+  const layer = wrap.querySelector("#hover-layer");
+  const tip = wrap.querySelector("#tooltip");
+  if (!layer) return;
+  if (i === null) { layer.innerHTML = ""; tip.hidden = true; return; }
+  const entry = fnEntry();
+  const rep = dimReport();
+  const { x, y, m, ih, W, fr } = geom;
+  const xx = x(fr[i]);
+  layer.innerHTML = `<line x1="${xx}" x2="${xx}" y1="${m.t}" y2="${m.t + ih}" stroke="var(--ink-3)" stroke-width="1" stroke-dasharray="3 3"/>` +
+    DATA.algorithms.map(name => {
+      const q = entry.stats[name].curve[i];
+      return `<circle cx="${xx}" cy="${y(q[1])}" r="6" fill="${SERIES_VAR[name]}" stroke="var(--surface)" stroke-width="2"/>`;
+    }).join("");
+  tip.innerHTML = `<div class="t-head">${fmtPct(fr[i])} of MaxFES · ${intFmt.format(rep.checkpoints[i])} FES</div>` +
+    DATA.algorithms.map(name => {
+      const q = entry.stats[name].curve[i];
+      return `<div class="t-row"><i class="swatch ${SERIES[name]}"></i><span>${name}</span><span class="num">${fmtE(q[1])}</span></div>
+        <div class="t-row"><span class="t-iqr num">IQR ${fmtE(q[0])} – ${fmtE(q[2])}</span></div>`;
+    }).join("");
+  tip.hidden = false;
+  const svgRect = wrap.querySelector("svg").getBoundingClientRect();
+  const scale = svgRect.width / W;
+  const tipW = tip.offsetWidth;
+  let left = xx * scale + 14;
+  if (left + tipW > svgRect.width) left = xx * scale - tipW - 14;
+  tip.style.left = Math.max(0, left) + "px";
+  tip.style.top = (m.t * scale) + "px";
+}
+
+function renderFacts() {
+  const entry = fnEntry();
+  const rep = dimReport();
+  const box = document.getElementById("facts");
+  const pText = `p = ${fmtP(entry.p)}`;
+  const parts = [`<div><h3>F${entry.f} · ${NAMES[entry.f]}</h3><div class="sub">${groupOf(entry.f)} · F* = ${SUITE.optimum[entry.f]}</div></div>`,
+    `<div>${resultChip(entry.symbol)} <span class="sub">${pText}</span></div>`];
+  for (const name of DATA.algorithms) {
+    const s = entry.stats[name];
+    const extra = SUITE.feTerm
+      ? `<dt>Mean FEs used</dt><dd>${intFmt.format(Math.round(s.meanFes))}</dd><dt>Score</dt><dd>${entry.scores[name]}</dd>`
+      : "";
+    parts.push(`<div class="fact-alg">
+      <div class="who"><i class="swatch ${SERIES[name]}"></i>${name}</div>
+      <dl>
+        <dt>Mean</dt><dd>${fmtE(s.mean)}</dd>
+        <dt>Median</dt><dd>${fmtE(s.median)}</dd>
+        <dt>Best</dt><dd>${fmtE(s.best)}</dd>
+        <dt>Worst</dt><dd>${fmtE(s.worst)}</dd>
+        <dt>Runs reaching 1e-8</dt><dd>${s.solved} of ${rep.runs}</dd>
+        ${extra}
+      </dl>
+    </div>`);
+  }
+  box.innerHTML = parts.join("");
+}
+
+/* ---------- comparison table ---------- */
+function renderCompare() {
+  const rep = dimReport();
+  const fe = SUITE.feTerm;
+  document.getElementById("cmp-desc").innerHTML =
+    `Mean ${fe ? "error and mean evaluations used (FE<sub>term</sub>)" : "and standard deviation of the error at MaxFES"} over ${rep.runs} runs at D = ${rep.dim}. ` +
+    `The lower mean error is set in full ink. The result is the ${SUITE.testText} at α = ${DATA.alpha}, read as DM-L-SHADE relative to L-SHADE` +
+    `${fe ? "; the last two columns are each algorithm's score on the function" : ""}. Select a row to plot its convergence.`;
+  const byFn = Object.fromEntries(rep.functions.map(e => [e.f, e]));
+  const second = fe ? "mean FEs" : "std";
+  const nCols = fe ? 10 : 8;
+  let html = `<thead><tr>
+    <th class="l">Func.</th><th class="l">Function</th>
+    <th><span class="th-alg"><i class="swatch s1"></i>L-SHADE mean</span></th><th>${second}</th>
+    <th><span class="th-alg"><i class="swatch s2"></i>DM-L-SHADE mean</span></th><th>${second}</th>
+    <th>p-value</th><th class="c">Result</th>
+    ${fe ? `<th><span class="th-alg"><i class="swatch s1"></i>score</span></th><th><span class="th-alg"><i class="swatch s2"></i>score</span></th>` : ""}
+    </tr></thead><tbody>`;
+  for (const g of GROUPS) {
+    const present = g.fns.filter(f => byFn[f]);
+    if (!present.length) continue;
+    html += `<tr class="group"><td colspan="${nCols}">${g.name}</td></tr>`;
+    for (const f of present) {
+      const e = byFn[f];
+      const b = e.stats[BASE], c = e.stats[CAND];
+      const bc = b.mean < c.mean ? "lower" : b.mean > c.mean ? "higher" : "";
+      const cc = c.mean < b.mean ? "lower" : c.mean > b.mean ? "higher" : "";
+      const sec = s => fe ? intFmt.format(Math.round(s.meanFes)) : fmtE(s.std);
+      html += `<tr class="row${f === state.fn ? " selected" : ""}" data-f="${f}" tabindex="0">
+        <td class="l">F${f}</td><td class="l text">${NAMES[f]}</td>
+        <td class="${bc}">${fmtE(b.mean)}</td><td class="std">${sec(b)}</td>
+        <td class="${cc}">${fmtE(c.mean)}</td><td class="std">${sec(c)}</td>
+        <td>${fmtP(e.p)}</td><td class="c">${resultChip(e.symbol, false)}</td>
+        ${fe ? `<td>${e.scores[BASE]}</td><td>${e.scores[CAND]}</td>` : ""}</tr>`;
+    }
+  }
+  html += `</tbody>`;
+  const table = document.getElementById("cmp-table");
+  table.innerHTML = html;
+  table.querySelectorAll("tr.row").forEach(tr => {
+    const go = () => selectFn(Number(tr.dataset.f), true);
+    tr.addEventListener("click", go);
+    tr.addEventListener("keydown", ev => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); go(); } });
+  });
+}
+
+/* ---------- results tables (the rules' results template) ---------- */
+function renderAlgSwitch() {
+  const box = document.getElementById("alg-switch");
+  box.innerHTML = "";
+  for (const name of DATA.algorithms) {
+    const b = el("button", { type: "button", "aria-pressed": String(name === state.alg) }, name);
+    b.addEventListener("click", () => { state.alg = name; renderAlgSwitch(); renderResults(); });
+    box.appendChild(b);
+  }
+}
+function renderResults() {
+  const rep = dimReport();
+  document.getElementById("tables-h").textContent = `Error at MaxFES over ${rep.runs} runs`;
+  const number = SUITE.tableNumbers[rep.dim];
+  let html = `<caption>${number ? `Table ${number}. ` : ""}${state.alg}, results for ${rep.dim}D</caption>
+    <thead><tr><th class="l">Func.</th><th>Best</th><th>Worst</th><th>Median</th><th>Mean</th><th>Std</th></tr></thead><tbody>`;
+  for (const e of rep.functions) {
+    const s = e.stats[state.alg];
+    html += `<tr><td class="l">${e.f}</td><td>${fmtE(s.best)}</td><td>${fmtE(s.worst)}</td><td>${fmtE(s.median)}</td><td>${fmtE(s.mean)}</td><td>${fmtE(s.std)}</td></tr>`;
+  }
+  document.getElementById("res-table").innerHTML = html + `</tbody>`;
+}
+
+/* ---------- competition ranking ---------- */
+const RANK_MODES = [
+  { label: "+ DM-L-SHADE", ours: [CAND] },
+  { label: "+ L-SHADE", ours: [BASE] },
+  { label: "+ both", ours: [BASE, CAND] },
+  { label: "Entries only", ours: [] },
+];
+state.rankMode = 0;
+function renderModeSwitch() {
+  const modeBox = document.getElementById("rank-mode");
+  modeBox.innerHTML = "";
+  RANK_MODES.forEach((mode, i) => {
+    const b = el("button", { type: "button", "aria-pressed": String(i === state.rankMode) }, mode.label);
+    b.addEventListener("click", () => { state.rankMode = i; renderRanking(); });
+    modeBox.appendChild(b);
+  });
+}
+
+function renderRanking() {
+  const R = DATA.ranking;
+  const section = document.getElementById("ranking-section");
+  section.hidden = !R;
+  if (!R) return;
+  renderModeSwitch();
+  if (R.kind === "score") return renderScoreRanking(R);
+  const entrants = R.entries.filter(e => !e.ours);
+  document.getElementById("rank-h").textContent = `Ranking against the ${entrants.length} entries of ${SUITE.name}`;
+  document.getElementById("rank-desc").innerHTML =
+    `The official score pits every algorithm against every other: on each function and dimension, the 30 trials of one meet the 30 of the other ` +
+    `(900 meetings; the lower error wins, equal errors go to fewer evaluations, and a full tie is half a point). ` +
+    `The final score adds every meeting over the 12 functions and ${R.dims.map(d => d + "D").join(" and ")}. The entries' results come from the organizers' files.`;
+
+  const included = R.entries.filter(e => !e.ours || RANK_MODES[state.rankMode].ours.includes(e.name));
+  const names = included.map(e => e.name);
+  const totalIn = (a, dim) => names.reduce((sum, b) => b === a ? sum : sum + R.points[dim][a][b], 0);
+  const rows = included.map(e => {
+    const perDim = Object.fromEntries(R.dims.map(d => [d, totalIn(e.name, d)]));
+    return { ...e, perDim, total: R.dims.reduce((s, d) => s + perDim[d], 0) };
+  });
+  const dimRank = {};
+  for (const d of R.dims) {
+    [...rows].sort((a, b) => b.perDim[d] - a.perDim[d]).forEach((r, i) => { (dimRank[r.name] ||= {})[d] = i + 1; });
+  }
+  rows.sort((a, b) => b.total - a.total);
+  const maxTotal = rows[0].total;
+  const meetings = R.dims.length * R.perPair;
+  const h2h = name => {
+    if (name === CAND) return `<span class="std">—</span>`;
+    const won = R.dims.reduce((s, d) => s + R.points[d][CAND][name], 0) / meetings;
+    return `<span class="h2h"><span class="track"><i style="width:${(won * 100).toFixed(1)}%"></i></span>${(won * 100).toFixed(1)}%</span>`;
+  };
+  const fmtPts = v => v.toLocaleString("en-US", { maximumFractionDigits: 1 });
+  let html = `<thead><tr><th class="l">Pos.</th><th class="l">Algorithm</th>` +
+    R.dims.map(d => `<th>Points ${d}D</th>`).join("") +
+    `<th>Total</th><th class="l"></th><th>Official<br>position</th><th class="l">DM-L-SHADE wins<br>against it</th></tr></thead><tbody>`;
+  rows.forEach((r, i) => {
+    const style = r.ours ? ` style="--ours: ${SERIES_VAR[r.name]}"` : "";
+    html += `<tr class="${r.ours ? "ours" : ""}"${style}>
+      <td class="pos">${i + 1}</td>
+      <td class="alg">${r.name}${r.title ? `<small>${r.title}</small>` : ""}</td>` +
+      R.dims.map(d => `<td>${fmtPts(r.perDim[d])}<span class="dimrank">${dimRank[r.name][d]}</span></td>`).join("") +
+      `<td>${fmtPts(r.total)}</td>
+      <td class="bar-cell"><span class="tbar" style="width:${(100 * r.total / maxTotal).toFixed(1)}%"></span></td>
+      <td>${r.official ?? "—"}</td>
+      <td class="l">${h2h(r.name)}</td></tr>`;
+  });
+  document.getElementById("rank-table").innerHTML = html + `</tbody>`;
+  document.getElementById("rank-foot").innerHTML =
+    `<p>The small grey number next to each dimension's points is the position in that dimension. The official position is the organizers' ranking among the ${entrants.length} entries only. ` +
+    `The last column is the share of the ${intFmt.format(meetings)} meetings (12 functions × 900 × ${R.dims.length} dimensions) that DM-L-SHADE wins against each algorithm; above 50% it has the edge. ` +
+    `The entries record runs that reached 10<sup>−8</sup> as 0, so errors at or below 10<sup>−8</sup> count as 0 for every algorithm here.</p><p>${R.note}</p>`;
+}
+
+// CEC 2017: section 2.3 score (Score 1 from the weighted sum of mean errors,
+// Score 2 from the weighted sum of ranks), recomputed for whichever algorithms are included.
+function renderScoreRanking(R) {
+  const entrants = R.entries.filter(e => !e.ours);
+  const dimsText = R.dims.map(d => d + "D").join(" and ");
+  document.getElementById("rank-h").textContent = `Ranking against the ${entrants.length} entries of ${SUITE.name}`;
+  document.getElementById("rank-desc").innerHTML =
+    `The competition score of section 2.3, recomputed among the algorithms selected: Score 1 from the sum of mean errors and Score 2 from the ranks on each function, ` +
+    `both weighted by dimension (${R.dims.map(d => `${d}D × ${R.weights[d]}`).join(", ")}). It covers ${dimsText}, the dimensions collected so far; ` +
+    `the official score of the organizers covers all four. The entries' results come from the organizers' archive.`;
+
+  const included = R.entries.filter(e => !e.ours || RANK_MODES[state.rankMode].ours.includes(e.name));
+  const names = included.map(e => e.name);
+  const se = {}, sr = {};
+  for (const n of names) { se[n] = 0; sr[n] = 0; }
+  for (const d of R.dims) {
+    const w = R.weights[d];
+    for (const f of R.functions) {
+      const ordered = names.map(n => [R.means[n][d][f], n]).sort((a, b) => a[0] - b[0]);
+      for (let i = 0; i < ordered.length;) {
+        let j = i;
+        while (j < ordered.length && ordered[j][0] === ordered[i][0]) j++;
+        for (let k = i; k < j; k++) sr[ordered[k][1]] += w * (i + 1 + j) / 2;
+        i = j;
+      }
+      for (const n of names) se[n] += w * R.means[n][d][f];
+    }
+  }
+  const seMin = Math.min(...Object.values(se)), srMin = Math.min(...Object.values(sr));
+  const part = (total, min) => total === 0 ? 50 : (1 - (total - min) / total) * 50;
+  const rows = included.map(e => {
+    const s1 = part(se[e.name], seMin), s2 = part(sr[e.name], srMin);
+    return { ...e, s1, s2, score: s1 + s2 };
+  }).sort((a, b) => b.score - a.score);
+  const officialRank = Object.fromEntries([...entrants].sort((a, b) => b.officialScore - a.officialScore).map((e, i) => [e.name, i + 1]));
+  const maxScore = rows[0].score;
+
+  const wilcoxonCell = r => {
+    if (r.name === CAND) return `<span class="std">—</span>`;
+    if (r.statsOnly) return `<span class="std">statistics only</span>`;
+    const w = R.wilcoxon[r.name] || {};
+    return R.dims.map(d => {
+      const c = w[d];
+      if (!c) return "";
+      return `<span class="wl"><span class="std">${d}D</span> <b class="good-t">${c["+"]}</b>/<b>${c["="]}</b>/<b class="bad-t">${c["-"]}</b></span>`;
+    }).join("");
+  };
+  let html = `<thead><tr><th class="l">Pos.</th><th class="l">Algorithm</th><th>Score 1</th><th>Score 2</th><th>Score</th><th class="l"></th>` +
+    `<th>Official score<br>(position)</th><th class="l">DM-L-SHADE against it<br>+ / = / −</th></tr></thead><tbody>`;
+  rows.forEach((r, i) => {
+    const style = r.ours ? ` style="--ours: ${SERIES_VAR[r.name]}"` : "";
+    html += `<tr class="${r.ours ? "ours" : ""}"${style}>
+      <td class="pos">${i + 1}</td>
+      <td class="alg">${r.name}${r.title ? `<small>${r.title}</small>` : ""}</td>
+      <td>${r.s1.toFixed(2)}</td><td>${r.s2.toFixed(2)}</td><td>${r.score.toFixed(2)}</td>
+      <td class="bar-cell"><span class="tbar" style="width:${(100 * r.score / maxScore).toFixed(1)}%"></span></td>
+      <td>${r.officialScore === null ? "—" : `${r.officialScore.toFixed(2)} <span class="dimrank">${officialRank[r.name]}</span>`}</td>
+      <td class="l">${wilcoxonCell(r)}</td></tr>`;
+  });
+  document.getElementById("rank-table").innerHTML = html + `</tbody>`;
+  document.getElementById("rank-foot").innerHTML =
+    `<p>With the score defined relative to the best algorithm in each part, the leader of each part gets 50 by construction, so scores change with the set of algorithms compared. ` +
+    `The last column counts the functions where DM-L-SHADE is significantly better (+), not different (=) or worse (−) than each algorithm, by the two-sided Wilcoxon rank-sum test on the final errors at α = ${DATA.alpha}. ` +
+    `LSHADE-cnEpSin sent only per-function statistics, which are enough for the score but not for the test. Errors below 10<sup>−8</sup> count as 0 for every algorithm.</p><p>${R.note}</p>`;
+}
+
+/* ---------- notes ---------- */
+function renderNotes() {
+  const list = items => items.map(t => `<li>${t}</li>`).join("");
+  document.getElementById("setting").innerHTML = list(SUITE.setting);
+  document.getElementById("notes").innerHTML = list(SUITE.notes);
+  const missing = SUITE.dims.filter(d => !DATA.dimensions.some(r => r.dim === d));
+  const todo = [];
+  if (missing.length) todo.push(`<span class="pending">Results</span>${missing.map(d => d + "D").join(", ")} not collected yet.`);
+  todo.push(`<span class="pending">Complexity</span>${SUITE.complexity} has not been measured.`);
+  document.getElementById("todo").innerHTML = list(todo);
+  document.getElementById("conv-desc").innerHTML =
+    `Median error at the ${DATA.dimensions[0].checkpoints.length} recording points of the rules, with the band spanning the middle half of the runs. ` +
+    `Both axes are logarithmic. Errors below 10<sup>−8</sup> sit on the floor of the chart.`;
+  document.getElementById("footer").innerHTML =
+    `Generated by <code>experiments/report.py --benchmark ${DATA.benchmark}</code> from the result files of <code>experiments/${DATA.benchmark}_collect.py</code>. ` +
+    `Std is the population standard deviation of the final errors.`;
+}
+
+/* ---------- wiring ---------- */
+function renderAll() {
+  const rep = dimReport();
+  if (!rep.functions.some(e => e.f === state.fn)) {
+    const firstSig = rep.functions.find(e => e.symbol !== "=");
+    state.fn = (firstSig || rep.functions[0]).f;
+  }
+  state.hover = null;
+  renderDimSwitch();
+  renderSummary();
+  renderPicker();
+  renderChart();
+  renderFacts();
+  renderCompare();
+  renderAlgSwitch();
+  renderResults();
+}
+
+document.getElementById("chart-wrap").addEventListener("keydown", ev => {
+  if (ev.key !== "ArrowLeft" && ev.key !== "ArrowRight") return;
+  ev.preventDefault();
+  const n = dimReport().checkpoints.length;
+  const cur = state.hover === null ? (ev.key === "ArrowLeft" ? n : -1) : state.hover;
+  showHover(Math.min(n - 1, Math.max(0, cur + (ev.key === "ArrowLeft" ? -1 : 1))));
+});
+document.getElementById("chart-wrap").addEventListener("blur", () => showHover(null));
+let resizeTimer, lastWidth = 0;
+new ResizeObserver(entries => {
+  const width = Math.round(entries[0].contentRect.width);
+  if (width === lastWidth) return;
+  lastWidth = width;
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(renderChart, 80);
+}).observe(document.getElementById("chart-wrap"));
+
+renderHeader();
+renderNotes();
+renderRanking();
+renderAll();
+</script>
