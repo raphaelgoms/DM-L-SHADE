@@ -13,6 +13,7 @@
 
 #include "algorithm/algorithm_factory.h"
 #include "problems/cec14_problem.h"
+#include "problems/cec17_problem.h"
 #include "problems/cec22_problem.h"
 #include "demos/sphere_demo.h"
 #include "demos/tsp_demo.h"
@@ -24,12 +25,18 @@ double *OShift,*M,*y,*z,*x_bound;
 int ini_flag=0,n_flag,func_flag,*SS;
 
 // Benchmark suite that --f indexes into.
-enum class BenchmarkType { CEC2014, CEC2022 };
+enum class BenchmarkType { CEC2014, CEC2017, CEC2022 };
 
 // Number of functions defined by each benchmark suite; bounds what --f and
 // the default (whole-suite) function range accept.
 static int benchmarkFunctionCount(BenchmarkType benchmark_type) {
   return benchmark_type == BenchmarkType::CEC2022 ? 12 : 30;
+}
+
+// Whether a function number within 1..benchmarkFunctionCount() is part of the
+// suite: CEC-2017 removed F2, but keeps the original numbering of the others.
+static bool benchmarkHasFunction(BenchmarkType benchmark_type, int function_number) {
+  return !(benchmark_type == BenchmarkType::CEC2017 && function_number == 2);
 }
 
 // Dimensions each benchmark suite defines (and ships data files for).
@@ -38,19 +45,20 @@ static bool benchmarkSupportsDimension(BenchmarkType benchmark_type, int dimensi
   return dimension == 10 || dimension == 30 || dimension == 50 || dimension == 100;
 }
 
-// CEC-2014 rules: record the error at these fractions of MaxFES in every run.
-static const double kCEC14CheckpointFractions[] = {
+// CEC-2014 and CEC-2017 rules: record the error at these fractions of MaxFES in every run.
+static const double kCheckpointFractions[] = {
   0.01, 0.02, 0.03, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0
 };
 
-// MaxFES of each suite: 10000*D for CEC-2014; fixed per dimension for CEC-2022.
+// MaxFES of each suite: 10000*D for CEC-2014 and CEC-2017; fixed per
+// dimension for CEC-2022.
 static unsigned int benchmarkMaxEvaluations(BenchmarkType benchmark_type, int dimension) {
   if (benchmark_type == BenchmarkType::CEC2022) return dimension == 20 ? 1000000 : 200000;
   return dimension * 10000;
 }
 
 // Evaluation counts at which each suite's rules record the error: the
-// fractions above of MaxFES for CEC-2014, and floor(D^(k/5-3) * MaxFES),
+// fractions above of MaxFES for CEC-2014 and CEC-2017, and floor(D^(k/5-3) * MaxFES),
 // k = 0..15, for CEC-2022.
 static vector<unsigned int> benchmarkCheckpoints(BenchmarkType benchmark_type, int dimension, unsigned int max_evaluations) {
   vector<unsigned int> checkpoints;
@@ -61,7 +69,7 @@ static vector<unsigned int> benchmarkCheckpoints(BenchmarkType benchmark_type, i
       checkpoints.push_back((unsigned int)floor(pow(dimension, k / 5.0 - 3) * max_evaluations + 1e-6));
     }
   } else {
-    for (double fraction : kCEC14CheckpointFractions) {
+    for (double fraction : kCheckpointFractions) {
       checkpoints.push_back((unsigned int)llround(fraction * max_evaluations));
     }
   }
@@ -72,6 +80,8 @@ static shared_ptr<Problem> createBenchmarkProblem(BenchmarkType benchmark_type, 
   switch (benchmark_type) {
     case BenchmarkType::CEC2022:
       return make_shared<CEC22Problem>(function_number, problem_size);
+    case BenchmarkType::CEC2017:
+      return make_shared<CEC17Problem>(function_number, problem_size);
     case BenchmarkType::CEC2014:
     default:
       return make_shared<CEC14Problem>(function_number, problem_size);
@@ -85,8 +95,9 @@ static void runBenchmark(BenchmarkType benchmark_type, AlgorithmType algorithm_t
   config.memory_size = 6;
   config.arc_rate = 2.6;
   config.p_best_rate = 0.11;
-  // CEC-2022 rules: a run ends when the error drops below 1e-8.
-  config.stop_at_optimum = benchmark_type == BenchmarkType::CEC2022;
+  // CEC-2017 and CEC-2022 rules: a run ends when the error drops below 1e-8.
+  config.stop_at_optimum = benchmark_type == BenchmarkType::CEC2017 ||
+                           benchmark_type == BenchmarkType::CEC2022;
   if (record_checkpoints) {
     config.checkpoint_evaluations = benchmarkCheckpoints(benchmark_type, problem_size, config.max_num_evaluations);
   }
@@ -96,6 +107,7 @@ static void runBenchmark(BenchmarkType benchmark_type, AlgorithmType algorithm_t
   bool single_run = num_runs == 1;
 
   for (int function_number = function_start; function_number <= function_end; function_number++) {
+    if (!benchmarkHasFunction(benchmark_type, function_number)) continue;
     if (!single_run) {
       cout << "\n-------------------------------------------------------" << endl;
       cout << "Function = " << function_number << ", Dimension size = " << problem_size << "\n" << endl;
@@ -243,10 +255,12 @@ int main(int argc, char **argv) {
 
       if (benchmark_name == "cec2014" || benchmark_name == "cec14") {
         benchmark_type = BenchmarkType::CEC2014;
+      } else if (benchmark_name == "cec2017" || benchmark_name == "cec17") {
+        benchmark_type = BenchmarkType::CEC2017;
       } else if (benchmark_name == "cec2022" || benchmark_name == "cec22") {
         benchmark_type = BenchmarkType::CEC2022;
       } else {
-        cerr << "Invalid benchmark. Please use \"cec2014\" or \"cec2022\"." << endl;
+        cerr << "Invalid benchmark. Please use \"cec2014\", \"cec2017\" or \"cec2022\"." << endl;
         return 1;
       }
       i++;
@@ -282,6 +296,11 @@ int main(int argc, char **argv) {
     if (requested_function < 1 || requested_function > max_function_number) {
       cerr << "Invalid function number. Please use a value between 1 and "
            << max_function_number << "." << endl;
+      return 1;
+    }
+    if (!benchmarkHasFunction(benchmark_type, requested_function)) {
+      cerr << "Function " << requested_function << " is not part of this benchmark"
+           << " (CEC-2017 removed F2)." << endl;
       return 1;
     }
     function_start = function_end = requested_function;
