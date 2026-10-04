@@ -37,3 +37,6 @@ CLAUDE.md
 
 # Generated experiment results
 experiments/results/
+
+# Python bytecode cache
+__pycache__/
