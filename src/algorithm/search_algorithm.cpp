@@ -22,11 +22,41 @@ void searchAlgorithm::initializeParameters() {
 
   checkpoint_errors.clear();
   termination_evaluations = 0;
+  start_clock = std::clock();
+  cached_cpu_seconds = 0;
+  cached_cpu_nfes = 0;
+}
+
+double searchAlgorithm::cpuSeconds(unsigned int nfes) const {
+  if (nfes < cached_cpu_nfes || nfes - cached_cpu_nfes >= 8 || nfes == 0) {
+    cached_cpu_seconds = (double)(std::clock() - start_clock) / CLOCKS_PER_SEC;
+    cached_cpu_nfes = nfes;
+  }
+  return cached_cpu_seconds;
+}
+
+int searchAlgorithm::plannedPopSize(unsigned int nfes, int min_pop_size, int max_pop_size) const {
+  if (config.max_cpu_seconds > 0) {
+    double fraction = std::min(1.0, cpuSeconds(nfes) / config.max_cpu_seconds);
+    return (int)round((min_pop_size - max_pop_size) * fraction + max_pop_size);
+  }
+  // The original L-SHADE expression, kept as is so results do not change.
+  return (int)round((((min_pop_size - max_pop_size) / (double)max_num_evaluations) * nfes) + max_pop_size);
 }
 
 // Must be called after every counted evaluation, once bsf_fitness reflects it,
 // so each checkpoint holds the best error at exactly that number of evaluations.
 void searchAlgorithm::recordCheckpoints(unsigned int nfes, Fitness bsf_fitness) {
+  const vector<double> &times = config.checkpoint_cpu_seconds;
+  if (!times.empty()) {
+    if (checkpoint_errors.size() < times.size()) {
+      double seconds = cpuSeconds(nfes);
+      while (checkpoint_errors.size() < times.size() && seconds >= times[checkpoint_errors.size()]) {
+        checkpoint_errors.push_back(bsf_fitness - optimum);
+      }
+    }
+    return;
+  }
   const vector<unsigned int> &checkpoints = config.checkpoint_evaluations;
   while (checkpoint_errors.size() < checkpoints.size() &&
          nfes >= checkpoints[checkpoint_errors.size()]) {
@@ -34,10 +64,15 @@ void searchAlgorithm::recordCheckpoints(unsigned int nfes, Fitness bsf_fitness) 
   }
 }
 
-// Whether the search is over: the budget is spent or, with
-// config.stop_at_optimum, the error went below epsilon.
+// Whether the search is over: the budget (evaluations, or CPU time with
+// config.max_cpu_seconds) is spent or, with config.stop_at_optimum, the error
+// went below epsilon.
 bool searchAlgorithm::shouldStop(unsigned int nfes, Fitness bsf_fitness) const {
-  if (nfes >= max_num_evaluations) return true;
+  if (config.max_cpu_seconds > 0) {
+    if (cpuSeconds(nfes) >= config.max_cpu_seconds) return true;
+  } else if (nfes >= max_num_evaluations) {
+    return true;
+  }
   return config.stop_at_optimum && problem->hasKnownOptimum() && bsf_fitness - optimum < epsilon;
 }
 
@@ -45,7 +80,9 @@ bool searchAlgorithm::shouldStop(unsigned int nfes, Fitness bsf_fitness) const {
 // checkpoints past an early stop the final error.
 void searchAlgorithm::finishRun(unsigned int nfes, Fitness bsf_fitness) {
   termination_evaluations = nfes;
-  while (checkpoint_errors.size() < config.checkpoint_evaluations.size()) {
+  size_t checkpoints = config.checkpoint_cpu_seconds.empty() ? config.checkpoint_evaluations.size()
+                                                             : config.checkpoint_cpu_seconds.size();
+  while (checkpoint_errors.size() < checkpoints) {
     checkpoint_errors.push_back(bsf_fitness - optimum);
   }
 }

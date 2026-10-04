@@ -15,6 +15,7 @@
 #include "problems/cec14_problem.h"
 #include "problems/cec17_problem.h"
 #include "problems/cec22_problem.h"
+#include "cvrplib/cvrplib_solver.h"
 #include "demos/sphere_demo.h"
 #include "demos/tsp_demo.h"
 #include "demos/knapsack_demo.h"
@@ -175,6 +176,11 @@ int main(int argc, char **argv) {
   int requested_function = 1;
   AlgorithmType algorithm_type = AlgorithmType::LSHADE;
   BenchmarkType benchmark_type = BenchmarkType::CEC2014;
+  // --benchmark cvrplib solves a CVRPLIB instance instead of a CEC suite.
+  bool cvrplib = false;
+  string instance_path;
+  string solution_path;
+  double cpu_seconds = 0;  // --cpu-time; negative means "tmax"
 
   for (int i = 1; i < argc; i++) {
     if (strcmp(argv[i], "--sphere") == 0) {
@@ -259,10 +265,29 @@ int main(int argc, char **argv) {
         benchmark_type = BenchmarkType::CEC2017;
       } else if (benchmark_name == "cec2022" || benchmark_name == "cec22") {
         benchmark_type = BenchmarkType::CEC2022;
+      } else if (benchmark_name == "cvrplib") {
+        cvrplib = true;
       } else {
-        cerr << "Invalid benchmark. Please use \"cec2014\", \"cec2017\" or \"cec2022\"." << endl;
+        cerr << "Invalid benchmark. Please use \"cec2014\", \"cec2017\", \"cec2022\" or \"cvrplib\"." << endl;
         return 1;
       }
+      i++;
+    } else if (strcmp(argv[i], "--instance") == 0 && i + 1 < argc) {
+      instance_path = argv[i + 1];
+      i++;
+    } else if (strcmp(argv[i], "--cpu-time") == 0 && i + 1 < argc) {
+      if (strcmp(argv[i + 1], "tmax") == 0) {
+        cpu_seconds = -1;
+      } else {
+        cpu_seconds = atof(argv[i + 1]);
+        if (cpu_seconds <= 0) {
+          cerr << "Invalid CPU time. Please use a number of seconds > 0 or \"tmax\"." << endl;
+          return 1;
+        }
+      }
+      i++;
+    } else if (strcmp(argv[i], "--solution") == 0 && i + 1 < argc) {
+      solution_path = argv[i + 1];
       i++;
     } else if (strcmp(argv[i], "--f") == 0 && i + 1 < argc) {
       // Range depends on the benchmark suite, which may be parsed after
@@ -312,6 +337,27 @@ int main(int argc, char **argv) {
   if (record_checkpoints && num_runs != 1) {
     cerr << "--checkpoints requires --runs 1." << endl;
     return 1;
+  }
+
+  if (cvrplib) {
+    if (instance_path.empty()) {
+      cerr << "--benchmark cvrplib requires --instance <file.vrp>." << endl;
+      return 1;
+    }
+    CVRPLibSolverOptions options;
+    options.instance_path = instance_path;
+    options.solution_path = solution_path;
+    options.num_runs = num_runs;
+    options.show_time = show_time;
+    options.record_checkpoints = record_checkpoints;
+    options.cpu_seconds = cpu_seconds;
+    try {
+      runCVRPLibSolver(algorithm_type, options);
+    } catch (const std::exception &e) {
+      cerr << "Error: " << e.what() << endl;
+      return 1;
+    }
+    return 0;
   }
 
   if (sphere_demo) {

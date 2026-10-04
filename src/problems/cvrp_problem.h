@@ -23,6 +23,10 @@
 
   The solver only ever sees a flat real vector; it has no notion of routes,
   vehicles or capacity.
+
+  Distances are precomputed once into a matrix. With round_distances they are
+  rounded to the nearest integer, the TSPLIB EUC_2D convention that the CVRPLIB
+  instances (e.g. the X set of Uchoa et al.) and their best known solutions use.
 */
 class CVRPProblem : public Problem {
 public:
@@ -30,17 +34,43 @@ public:
               std::vector<std::pair<double, double>> customers,
               std::vector<double> demands,
               double vehicle_capacity,
-              Fitness known_best_value = -1)
+              Fitness known_best_value = -1,
+              bool round_distances = false)
     : depot_(depot), customers_(std::move(customers)), demands_(std::move(demands)),
-      capacity_(vehicle_capacity), known_best_value_(known_best_value) {}
+      capacity_(vehicle_capacity), known_best_value_(known_best_value) {
+    // Node 0 is the depot, node i + 1 is customer i.
+    std::vector<std::pair<double, double>> nodes = {depot_};
+    nodes.insert(nodes.end(), customers_.begin(), customers_.end());
+    n_nodes_ = (int)nodes.size();
+    dist_.resize((size_t)n_nodes_ * n_nodes_);
+    for (int a = 0; a < n_nodes_; a++) {
+      for (int b = 0; b < n_nodes_; b++) {
+        double d = distance(nodes[a], nodes[b]);
+        dist_[(size_t)a * n_nodes_ + b] = round_distances ? std::round(d) : d;
+      }
+    }
+  }
 
   int dimension() const override { return (int)customers_.size(); }
   double lowerBound() const override { return 0.0; }
   double upperBound() const override { return 1.0; }
 
   Fitness evaluate(const double *x) override {
-    return totalDistance(decodeRoutes(x));
+    std::vector<std::vector<int>> routes = decodeRoutes(x);
+    Fitness value = totalDistance(routes);
+    // The solver only reports the best value, so keep the routes behind it.
+    if (best_routes_.empty() || value < best_value_) {
+      best_value_ = value;
+      best_routes_ = std::move(routes);
+    }
+    return value;
   }
+
+  // Routes (customer indices, 0-based) of the best solution evaluated so far.
+  const std::vector<std::vector<int>> &bestRoutes() const { return best_routes_; }
+  int numCustomers() const { return (int)customers_.size(); }
+  double capacity() const { return capacity_; }
+  double demand(int customer) const { return demands_[customer]; }
 
   bool hasKnownOptimum() const override { return known_best_value_ >= 0; }
   Fitness knownOptimum() const override { return known_best_value_; }
@@ -70,12 +100,12 @@ public:
   Fitness totalDistance(const std::vector<std::vector<int>> &routes) const {
     double total = 0;
     for (const auto &route : routes) {
-      std::pair<double, double> prev = depot_;
+      int prev = 0;
       for (int idx : route) {
-        total += distance(prev, customers_[idx]);
-        prev = customers_[idx];
+        total += dist_[(size_t)prev * n_nodes_ + idx + 1];
+        prev = idx + 1;
       }
-      total += distance(prev, depot_);
+      total += dist_[(size_t)prev * n_nodes_];
     }
     return total;
   }
@@ -92,6 +122,10 @@ private:
   std::vector<double> demands_;
   double capacity_;
   Fitness known_best_value_;
+  int n_nodes_;
+  std::vector<double> dist_;
+  std::vector<std::vector<int>> best_routes_;
+  Fitness best_value_ = 0;
 };
 
 /*

@@ -307,7 +307,7 @@ Fitness DMLSHADE::run()
         }
 
         // calculate the population size in the next generation
-        plan_pop_size = round((((min_pop_size - max_pop_size) / (double)max_num_evaluations) * nfes) + max_pop_size);
+        plan_pop_size = plannedPopSize(nfes, min_pop_size, max_pop_size);
 
         if (pop_size > plan_pop_size)
         {

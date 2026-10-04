@@ -16,6 +16,7 @@
 #include <string.h>
 #include <vector>
 #include <math.h>
+#include <ctime>
 
 #include "problems/problem.h"
 
@@ -39,6 +40,13 @@ struct SHADEConfig {
   // Stop as soon as the error drops below 1e-8 (CEC-2022 rules) instead of
   // always using the whole budget. Needs a problem with a known optimum.
   bool stop_at_optimum = false;
+  // CPU-time budget in seconds (e.g. the CVRP protocol of Vidal, 2022). When
+  // > 0 the run stops at this CPU time instead of after max_num_evaluations,
+  // and the population size reduction follows the elapsed fraction of it.
+  double max_cpu_seconds = 0;
+  // CPU times in seconds (ascending) at which run() records the best error;
+  // used instead of checkpoint_evaluations when not empty.
+  vector<double> checkpoint_cpu_seconds;
 };
 
 class searchAlgorithm {
@@ -50,8 +58,8 @@ public:
   virtual Fitness run() = 0;
 
   // Best error (best fitness - known optimum) after each of
-  // config.checkpoint_evaluations, filled by run(). Checkpoints after an
-  // early stop hold the final error.
+  // config.checkpoint_evaluations (or config.checkpoint_cpu_seconds), filled
+  // by run(). Checkpoints after an early stop hold the final error.
   const vector<Fitness> &checkpointErrors() const { return checkpoint_errors; }
   // Number of evaluations used when run() stopped (FE_term in CEC-2022).
   unsigned int terminationEvaluations() const { return termination_evaluations; }
@@ -62,6 +70,11 @@ protected:
   void recordCheckpoints(unsigned int nfes, Fitness bsf_fitness);
   bool shouldStop(unsigned int nfes, Fitness bsf_fitness) const;
   void finishRun(unsigned int nfes, Fitness bsf_fitness);
+  // CPU seconds since run() started, read from the clock at most every few
+  // evaluations (a clock read costs about as much as a cheap evaluation).
+  double cpuSeconds(unsigned int nfes) const;
+  // Population size planned by the linear reduction after nfes evaluations.
+  int plannedPopSize(unsigned int nfes, int min_pop_size, int max_pop_size) const;
   Individual makeNewIndividual();
   void modifySolutionWithParentMedium(Individual child, Individual parent);
   void setBestSolution(const vector<Individual> &pop, const vector<Fitness> &fitness, Individual &bsf_solution, Fitness &bsf_fitness);
@@ -132,6 +145,9 @@ protected:
   // Best errors recorded so far at config.checkpoint_evaluations.
   vector<Fitness> checkpoint_errors;
   unsigned int termination_evaluations;
+  std::clock_t start_clock;
+  mutable double cached_cpu_seconds;
+  mutable unsigned int cached_cpu_nfes;
 };
 
 class LSHADE: public searchAlgorithm {
