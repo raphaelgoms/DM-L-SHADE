@@ -1,0 +1,471 @@
+<title>DM-L-SHADE on CVRPLIB</title>
+/*__BASE_STYLE__*/
+<style>
+/* CVRP additions to the CEC report styles: a third series for HGS-CVRP. */
+:root { --series-3: #1baf7a; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --series-3: #199e70; } }
+:root[data-theme="dark"] { --series-3: #199e70; }
+.s3 { background: var(--series-3); }
+.controls { display: flex; flex-wrap: wrap; gap: 0.75rem 1.25rem; align-items: center; }
+.controls label { font-size: var(--step--1); color: var(--ink-3); display: inline-flex; gap: 0.5rem; align-items: center; }
+.controls select { font: inherit; font-size: var(--step--1); padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid var(--rule-strong); background: var(--surface); color: var(--ink); }
+.protocol-note { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 0.9rem 1.1rem; color: var(--ink-2); font-size: var(--step--1); max-width: none; }
+.protocol-note b { color: var(--ink); font-weight: 600; }
+.algs { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: 1rem; }
+.alg-box { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 1rem 1.15rem; display: grid; gap: 0.5rem; align-content: start; }
+.alg-box .who { display: flex; align-items: center; gap: 0.45rem; font-weight: 600; font-size: var(--step--1); }
+.alg-box .big { font-family: var(--font-data); font-size: var(--step-3); line-height: 1; font-weight: 500; }
+.alg-box .big small { font-size: var(--step-0); color: var(--ink-3); margin-left: 0.2rem; }
+.alg-box dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 0.15rem 0.75rem; font-size: var(--step--1); }
+.alg-box dt { color: var(--ink-3); }
+.alg-box dd { margin: 0; text-align: right; font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+.verdicts { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; font-size: var(--step--1); color: var(--ink-2); }
+.two-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr)); gap: 1.25rem; }
+td .chip { font-family: var(--font-body); }
+.chart-wrap svg .ref-label { font-family: var(--font-body); font-size: 11px; }
+</style>
+
+<div class="page">
+  <header>
+    <div class="eyebrow">CVRPLIB · X instances of Uchoa et al. (2017)</div>
+    <h1>DM-L-SHADE on the CVRP</h1>
+    <p class="lede" id="lede"></p>
+    <dl class="spec" id="spec"></dl>
+  </header>
+
+  <section aria-labelledby="summary-h">
+    <div class="section-head">
+      <div>
+        <div class="eyebrow">Summary</div>
+        <h2 id="summary-h"></h2>
+      </div>
+      <div class="controls">
+        <div class="segmented" id="protocol-switch" role="group" aria-label="Protocol"></div>
+        <label id="instance-label" hidden>Instance <select id="instance-select"></select></label>
+      </div>
+    </div>
+    <p class="protocol-note" id="protocol-note"></p>
+    <div class="algs" id="algs"></div>
+    <div class="verdicts" id="verdicts"></div>
+  </section>
+
+  <section aria-labelledby="conv-h">
+    <div class="section-head">
+      <div>
+        <div class="eyebrow">Search behaviour</div>
+        <h2 id="conv-h">Convergence and final gaps</h2>
+        <p class="muted" id="conv-desc"></p>
+      </div>
+    </div>
+    <div class="two-charts">
+      <div class="chart-card">
+        <div class="chart-top">
+          <div class="chart-title">Gap to the BKS over the run</div>
+          <div class="legend" id="conv-legend"></div>
+        </div>
+        <div class="chart-wrap" id="conv-chart" tabindex="0" aria-label="Convergence chart. Use the left and right arrow keys to step through the recording points."></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-top">
+          <div class="chart-title">Final gap of every run</div>
+          <div class="legend"><span>one dot per run · bar at the mean</span></div>
+        </div>
+        <div class="chart-wrap" id="strip-chart"></div>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="table-h">
+    <div class="section-head">
+      <div>
+        <div class="eyebrow">Results</div>
+        <h2 id="table-h">Solution cost over the runs</h2>
+        <p class="muted" id="table-desc"></p>
+      </div>
+    </div>
+    <div class="table-frame"><table id="cost-table"></table></div>
+  </section>
+
+  <section aria-labelledby="tests-h">
+    <div class="section-head">
+      <div>
+        <div class="eyebrow">Statistics</div>
+        <h2 id="tests-h">Statistical tests</h2>
+        <p class="muted" id="tests-desc"></p>
+      </div>
+    </div>
+    <div class="table-frame"><table id="pair-table"></table></div>
+    <div id="across"></div>
+  </section>
+
+  <section aria-labelledby="notes-h">
+    <div class="section-head">
+      <div>
+        <div class="eyebrow">Method</div>
+        <h2 id="notes-h">Setup and notes</h2>
+      </div>
+    </div>
+    <div class="notes">
+      <div>
+        <h3>Protocols</h3>
+        <ul id="protocol-list"></ul>
+      </div>
+      <div>
+        <h3>Setup</h3>
+        <ul id="setup-list"></ul>
+      </div>
+      <div>
+        <h3>Reading the results</h3>
+        <ul id="reading-list"></ul>
+      </div>
+    </div>
+  </section>
+
+  <footer id="footer"></footer>
+</div>
+
+<script>
+const DATA = /*__REPORT_DATA__*/null;
+
+const SERIES = { "L-SHADE": "s1", "DM-L-SHADE": "s2", "HGS": "s3" };
+const SERIES_VAR = { "L-SHADE": "var(--series-1)", "DM-L-SHADE": "var(--series-2)", "HGS": "var(--series-3)" };
+const LABEL = { "L-SHADE": "L-SHADE", "DM-L-SHADE": "DM-L-SHADE", "HGS": "HGS-CVRP" };
+const GAP_FLOOR = 0.01;  // % — a gap of 0 sits on this floor of the log axis
+const CAND = DATA.candidate;
+
+const state = { protocol: 0, instance: 0, hover: null };
+const intFmt = new Intl.NumberFormat("en-US");
+const el = (tag, attrs = {}, html = "") => {
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+  if (html) node.innerHTML = html;
+  return node;
+};
+const fmtGap = g => `${g.toFixed(2)}%`;
+const fmtP = p => p < 1e-4 ? "<0.0001" : p.toFixed(4);
+const fmtPct = f => { const p = f * 100; return p >= 1 ? `${+p.toFixed(1)}%` : `${+p.toPrecision(2)}%`; };
+const swatch = n => `<i class="swatch ${SERIES[n]}"></i>`;
+const proto = () => DATA.protocols[state.protocol];
+const inst = () => proto().instances[state.instance];
+
+function protocolInfo(p) {
+  const s = p.settings;
+  if (s.protocol === "evaluations") {
+    const hgs = s.hgs_time === "match" ? "the mean CPU time DM-L-SHADE took on the instance"
+      : s.hgs_time ? `${s.hgs_time} s of CPU time` : "its own stopping criterion (20,000 iterations without improvement)";
+    return { label: "Evaluation budget", axis: "evaluations",
+      text: `<b>Evaluation budget.</b> L-SHADE and DM-L-SHADE run for 10000·n evaluations (n customers), the budget of the CEC runs, and record the best cost at 1, 2, 3, 5, 10, 20, …, 100% of it. HGS-CVRP runs with ${hgs}, so it gets the same CPU time and is shown by its final result.` };
+  }
+  const t = s.protocol === "tmax" ? "T<sub>max</sub> = n × 240/100 seconds" : `${s.cpu_time} s`;
+  return { label: s.protocol === "tmax" ? "CPU time (Tmax)" : `CPU time (${s.cpu_time} s)`, axis: "time",
+    text: `<b>Same CPU time for all, the protocol of Vidal (2022).</b> Every algorithm, HGS-CVRP included, runs on one thread for ${t} of CPU time and records its best cost at 1, 2, 5, 10, 15, 20, 30, 50, 75 and 100% of it.` };
+}
+
+/* ---------- header ---------- */
+function renderHeader() {
+  const instances = [...new Set(DATA.protocols.flatMap(p => p.instances.map(i => i.name)))];
+  const runs = [...new Set(DATA.protocols.flatMap(p => p.instances.flatMap(i => Object.values(i.algorithms).map(a => a.runs))))];
+  document.getElementById("lede").innerHTML =
+    `DM-L-SHADE and L-SHADE solve the capacitated vehicle routing problem through a random-key encoding, compared with HGS-CVRP (Vidal, 2022), the state-of-the-art heuristic for the CVRP, on the same instances, seeds and machine. ` +
+    `Costs are compared with the best known solutions (BKS) of CVRPLIB.`;
+  const items = [
+    ["Instances", instances.join(", ")],
+    ["Runs per algorithm", runs.join(" / ")],
+    ["Protocols", DATA.protocols.map(p => protocolInfo(p).label).join(" · ")],
+    ["Machine", DATA.machine.cpu],
+    ["Report generated", DATA.generated],
+  ];
+  document.getElementById("spec").innerHTML = items.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join("");
+}
+
+function renderControls() {
+  const box = document.getElementById("protocol-switch");
+  box.innerHTML = "";
+  DATA.protocols.forEach((p, i) => {
+    const b = el("button", { type: "button", "aria-pressed": String(i === state.protocol) }, protocolInfo(p).label);
+    b.addEventListener("click", () => { state.protocol = i; state.instance = Math.min(state.instance, proto().instances.length - 1); renderAll(); });
+    box.appendChild(b);
+  });
+  const select = document.getElementById("instance-select");
+  const label = document.getElementById("instance-label");
+  label.hidden = proto().instances.length < 2;
+  select.innerHTML = proto().instances.map((x, i) => `<option value="${i}"${i === state.instance ? " selected" : ""}>${x.name}</option>`).join("");
+  select.onchange = () => { state.instance = Number(select.value); renderAll(); };
+}
+
+/* ---------- summary ---------- */
+function renderSummary() {
+  const p = proto(), x = inst(), info = protocolInfo(p);
+  document.getElementById("summary-h").textContent = `${x.name}: ${x.customers} customers, capacity ${x.capacity}, BKS ${intFmt.format(x.bks)}`;
+  document.getElementById("protocol-note").innerHTML = info.text +
+    (info.axis === "time" ? ` For this instance that is ${x.tmax.toFixed(0)} s.` : "");
+  document.getElementById("algs").innerHTML = p.names.filter(n => x.algorithms[n]).map(n => {
+    const a = x.algorithms[n];
+    return `<div class="alg-box">
+      <div class="who">${swatch(n)}${LABEL[n]}</div>
+      <div class="big">${a.meanGap.toFixed(2)}<small>% mean gap</small></div>
+      <dl>
+        <dt>Best gap</dt><dd>${fmtGap(a.bestGap)}</dd>
+        <dt>Mean cost</dt><dd>${intFmt.format(Math.round(a.mean))}</dd>
+        <dt>Runs at the BKS</dt><dd>${a.hits} of ${a.runs}</dd>
+        <dt>CPU time per run</dt><dd>${a.cpu.toFixed(1)} s</dd>
+      </dl>
+    </div>`;
+  }).join("");
+  document.getElementById("verdicts").innerHTML = x.pairs.map(pr => {
+    const sym = pr.better === null ? "=" : (pr.better === pr.a ? "+" : "−");
+    const cls = pr.better === null ? "tie" : "better";
+    const text = pr.better === null ? `${LABEL[pr.a]} and ${LABEL[pr.b]}: no significant difference`
+      : `${LABEL[pr.better]} better than ${LABEL[pr.better === pr.a ? pr.b : pr.a]}`;
+    return `<span class="chip ${cls}"><b>${pr.better === null ? "=" : "≠"}</b>${text}</span>`;
+  }).join("");
+}
+
+/* ---------- convergence ---------- */
+const geom = {};
+function renderConvergence() {
+  const p = proto(), x = inst(), info = protocolInfo(p);
+  const fractions = p.settings.checkpoint_fractions;
+  const names = p.names.filter(n => x.algorithms[n]);
+  const withCurve = names.filter(n => x.algorithms[n].curve);
+  const refOnly = names.filter(n => !x.algorithms[n].curve);
+  document.getElementById("conv-desc").innerHTML =
+    `Median gap at the recording points, with the band spanning the middle half of the runs; both axes are logarithmic, and a gap of 0 sits on the floor of the chart. ` +
+    (info.axis === "time" ? "The horizontal axis is the CPU time, the same for all algorithms." : "The horizontal axis is the evaluation budget; HGS-CVRP, which has no evaluation budget, appears as a dashed line at its mean final gap with the same CPU time.") +
+    ` On the right, the final gap of every run.`;
+  document.getElementById("conv-legend").innerHTML = names.map(n => `<span>${swatch(n)}${LABEL[n]}${x.algorithms[n].curve ? "" : " (final)"}</span>`).join("");
+
+  const wrap = document.getElementById("conv-chart");
+  const W = Math.max(300, wrap.clientWidth || 600), H = W < 520 ? 260 : 300;
+  const m = { l: 56, r: 14, t: 14, b: 44 }, iw = W - m.l - m.r, ih = H - m.t - m.b;
+  const clamp = g => Math.max(g, GAP_FLOOR);
+  const vals = [];
+  withCurve.forEach(n => x.algorithms[n].curve.forEach(q => q && q.forEach(v => vals.push(clamp(v)))));
+  refOnly.forEach(n => vals.push(clamp(x.algorithms[n].meanGap)));
+  // Bottom at a decade (or the floor), top just above the largest value.
+  let lo = Math.floor(Math.log10(Math.min(...vals))), hi = Math.log10(Math.max(...vals) * 1.25);
+  lo = Math.max(lo, Math.log10(GAP_FLOOR));
+  if (hi <= lo + 0.5) hi = lo + 1;
+  const xlo = Math.log10(fractions[0]);
+  const X = f => m.l + ((Math.log10(f) - xlo) / -xlo) * iw;
+  const Y = g => m.t + ih - ((Math.log10(clamp(g)) - lo) / (hi - lo)) * ih;
+  Object.assign(geom, { X, Y, m, ih, W, fractions, withCurve });
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Gap to the best known solution over the run">`;
+  for (let k = lo; k <= Math.floor(hi); k++) {
+    const yy = Y(10 ** k);
+    const v = 10 ** k;
+    svg += `<line x1="${m.l}" x2="${m.l + iw}" y1="${yy}" y2="${yy}" stroke="var(--rule)"/>`;
+    svg += `<text x="${m.l - 8}" y="${yy + 4}" text-anchor="end">${k === Math.log10(GAP_FLOOR) ? "≤" : ""}${v >= 1 ? v : v.toFixed(-k)}%</text>`;
+  }
+  for (const t of [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1]) {
+    if (t < fractions[0] * 0.999) continue;
+    const xx = X(t);
+    svg += `<line x1="${xx}" x2="${xx}" y1="${m.t + ih}" y2="${m.t + ih + 5}" stroke="var(--rule-strong)"/>`;
+    svg += `<text x="${xx}" y="${m.t + ih + 18}" text-anchor="middle">${fmtPct(t)}</text>`;
+  }
+  svg += `<line x1="${m.l}" x2="${m.l + iw}" y1="${m.t + ih}" y2="${m.t + ih}" stroke="var(--rule-strong)"/>`;
+  const axisText = info.axis === "time" ? `CPU time, % of ${x.tmax.toFixed(0)} s` : `Evaluations, % of ${intFmt.format(10000 * x.customers)}`;
+  svg += `<text class="axis-title" x="${m.l + iw / 2}" y="${H - 6}" text-anchor="middle">${axisText}</text>`;
+
+  for (const n of refOnly) {
+    const yy = Y(x.algorithms[n].meanGap);
+    svg += `<line x1="${m.l}" x2="${m.l + iw}" y1="${yy}" y2="${yy}" stroke="${SERIES_VAR[n]}" stroke-width="2" stroke-dasharray="6 4"/>`;
+    svg += `<text class="ref-label" x="${m.l + 6}" y="${yy - 6}" style="fill: var(--ink-2)">${LABEL[n]}, final mean gap ${fmtGap(x.algorithms[n].meanGap)}</text>`;
+  }
+  for (const n of withCurve) {
+    const pts = x.algorithms[n].curve.map((q, i) => q ? [X(fractions[i]), q] : null).filter(Boolean);
+    const top = pts.map(([xx, q]) => `${xx},${Y(q[2])}`), bot = pts.map(([xx, q]) => `${xx},${Y(q[0])}`).reverse();
+    svg += `<polygon points="${top.concat(bot).join(" ")}" fill="${SERIES_VAR[n]}" fill-opacity="0.14"/>`;
+  }
+  for (const n of withCurve) {
+    const pts = x.algorithms[n].curve.map((q, i) => q ? [X(fractions[i]), Y(q[1])] : null).filter(Boolean);
+    svg += `<path d="${pts.map(([a, b], i) => `${i ? "L" : "M"}${a},${b}`).join("")}" fill="none" stroke="${SERIES_VAR[n]}" stroke-width="2"/>`;
+  }
+  svg += `<g id="conv-hover"></g>`;
+  for (const n of withCurve) {
+    x.algorithms[n].curve.forEach((q, i) => {
+      if (q) svg += `<circle cx="${X(fractions[i])}" cy="${Y(q[1])}" r="4" fill="${SERIES_VAR[n]}" stroke="var(--surface)" stroke-width="2"/>`;
+    });
+  }
+  svg += `<rect id="conv-hit" x="${m.l}" y="${m.t}" width="${iw}" height="${ih}" fill="transparent"/></svg>`;
+  wrap.innerHTML = svg + `<div class="tooltip" id="conv-tip" hidden></div>`;
+  const hit = wrap.querySelector("#conv-hit");
+  const pick = evt => {
+    const rect = wrap.querySelector("svg").getBoundingClientRect();
+    const px = (evt.clientX - rect.left) * (W / rect.width);
+    let best = 0, dist = Infinity;
+    fractions.forEach((f, i) => { const d = Math.abs(X(f) - px); if (d < dist) { dist = d; best = i; } });
+    showConvHover(best);
+  };
+  hit.addEventListener("pointermove", pick);
+  hit.addEventListener("pointerdown", pick);
+  hit.addEventListener("pointerleave", () => showConvHover(null));
+}
+
+function showConvHover(i) {
+  state.hover = i;
+  const wrap = document.getElementById("conv-chart");
+  const layer = wrap.querySelector("#conv-hover"), tip = wrap.querySelector("#conv-tip");
+  if (!layer) return;
+  if (i === null || !geom.withCurve.length) { layer.innerHTML = ""; tip.hidden = true; return; }
+  const x = inst(), info = protocolInfo(proto());
+  const { X, Y, m, ih, W, fractions, withCurve } = geom;
+  const xx = X(fractions[i]);
+  layer.innerHTML = `<line x1="${xx}" x2="${xx}" y1="${m.t}" y2="${m.t + ih}" stroke="var(--ink-3)" stroke-dasharray="3 3"/>` +
+    withCurve.map(n => { const q = x.algorithms[n].curve[i]; return q ? `<circle cx="${xx}" cy="${Y(q[1])}" r="6" fill="${SERIES_VAR[n]}" stroke="var(--surface)" stroke-width="2"/>` : ""; }).join("");
+  const at = info.axis === "time" ? `${(fractions[i] * x.tmax).toFixed(1)} s CPU` : `${intFmt.format(Math.round(fractions[i] * 10000 * x.customers))} evaluations`;
+  tip.innerHTML = `<div class="t-head">${fmtPct(fractions[i])} · ${at}</div>` + withCurve.map(n => {
+    const q = x.algorithms[n].curve[i];
+    return q ? `<div class="t-row">${swatch(n)}<span>${LABEL[n]}</span><span class="num">${fmtGap(q[1])}</span></div>
+      <div class="t-row"><span class="t-iqr num">IQR ${fmtGap(q[0])} – ${fmtGap(q[2])}</span></div>`
+      : `<div class="t-row">${swatch(n)}<span>${LABEL[n]}</span><span class="num">no feasible yet</span></div>`;
+  }).join("");
+  tip.hidden = false;
+  const rect = wrap.querySelector("svg").getBoundingClientRect(), scale = rect.width / W;
+  let left = xx * scale + 14;
+  if (left + tip.offsetWidth > rect.width) left = xx * scale - tip.offsetWidth - 14;
+  tip.style.left = Math.max(0, left) + "px";
+  tip.style.top = m.t * scale + "px";
+}
+
+/* ---------- final gaps strip ---------- */
+function renderStrip() {
+  const p = proto(), x = inst();
+  const names = p.names.filter(n => x.algorithms[n]);
+  const wrap = document.getElementById("strip-chart");
+  const W = Math.max(300, wrap.clientWidth || 600), rowH = 64;
+  const m = { l: 92, r: 18, t: 10, b: 40 }, iw = W - m.l - m.r, H = m.t + rowH * names.length + m.b;
+  const maxGap = Math.max(...names.flatMap(n => x.algorithms[n].gaps), 0.1);
+  const niceMax = (() => { const e = 10 ** Math.floor(Math.log10(maxGap)); return Math.ceil(maxGap / e) * e; })();
+  const X = g => m.l + (Math.max(g, 0) / niceMax) * iw;
+  let svg = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Final gap of every run">`;
+  const ticks = 5;
+  for (let k = 0; k <= ticks; k++) {
+    const v = niceMax * k / ticks, xx = X(v);
+    svg += `<line x1="${xx}" x2="${xx}" y1="${m.t}" y2="${m.t + rowH * names.length}" stroke="var(--rule)"/>`;
+    svg += `<text x="${xx}" y="${m.t + rowH * names.length + 18}" text-anchor="middle">${+v.toFixed(2)}%</text>`;
+  }
+  svg += `<text class="axis-title" x="${m.l + iw / 2}" y="${H - 6}" text-anchor="middle">Final gap to the BKS</text>`;
+  names.forEach((n, r) => {
+    const a = x.algorithms[n], cy = m.t + rowH * r + rowH / 2;
+    svg += `<text x="${m.l - 10}" y="${cy + 4}" text-anchor="end" style="font-family: var(--font-body); fill: var(--ink-2)">${LABEL[n]}</text>`;
+    const mx = X(a.meanGap);
+    svg += `<line x1="${mx}" x2="${mx}" y1="${cy - 18}" y2="${cy + 18}" stroke="var(--ink)" stroke-width="2"/>`;
+    a.gaps.forEach((g, j) => {
+      const jitter = ((j * 7) % 9 - 4) * 3;
+      svg += `<circle class="dot" data-n="${n}" data-j="${j}" cx="${X(g)}" cy="${cy + jitter}" r="5" fill="${SERIES_VAR[n]}" fill-opacity="0.85" stroke="var(--surface)" stroke-width="1.5"/>`;
+    });
+  });
+  svg += `</svg>`;
+  wrap.innerHTML = svg + `<div class="tooltip" id="strip-tip" hidden></div>`;
+  const tip = wrap.querySelector("#strip-tip");
+  wrap.querySelectorAll("circle.dot").forEach(dot => {
+    dot.addEventListener("pointerenter", () => {
+      const a = x.algorithms[dot.dataset.n], j = Number(dot.dataset.j);
+      tip.innerHTML = `<div class="t-row">${swatch(dot.dataset.n)}<span>${LABEL[dot.dataset.n]}, seed ${a.seeds[j]}</span><span></span></div>
+        <div class="t-row"><span class="t-iqr num">cost ${intFmt.format(a.costs[j])} · gap ${fmtGap(a.gaps[j])}</span></div>`;
+      tip.hidden = false;
+      const rect = wrap.querySelector("svg").getBoundingClientRect(), scale = rect.width / W;
+      let left = Number(dot.getAttribute("cx")) * scale + 12;
+      if (left + tip.offsetWidth > rect.width) left -= tip.offsetWidth + 24;
+      tip.style.left = Math.max(0, left) + "px";
+      tip.style.top = (Number(dot.getAttribute("cy")) * scale - 50) + "px";
+    });
+    dot.addEventListener("pointerleave", () => { tip.hidden = true; });
+  });
+}
+
+/* ---------- tables ---------- */
+function renderTables() {
+  const p = proto(), x = inst();
+  const names = p.names.filter(n => x.algorithms[n]);
+  document.getElementById("table-desc").textContent =
+    `Total distance of the best solution of each run (distances rounded to integers, as in CVRPLIB), and the gap to the BKS of ${intFmt.format(x.bks)}. Std is the population standard deviation over the runs.`;
+  let html = `<thead><tr><th class="l">Algorithm</th><th>Runs</th><th>Best</th><th>Median</th><th>Mean</th><th>Worst</th><th>Std</th><th>Best gap</th><th>Mean gap</th><th>CPU s / run</th></tr></thead><tbody>`;
+  for (const n of names) {
+    const a = x.algorithms[n];
+    html += `<tr><td class="l text">${swatch(n)} ${LABEL[n]}</td><td>${a.runs}</td><td>${intFmt.format(a.best)}</td><td>${intFmt.format(a.median)}</td>` +
+      `<td>${intFmt.format(Math.round(a.mean))}</td><td>${intFmt.format(a.worst)}</td><td>${a.std.toFixed(1)}</td>` +
+      `<td>${fmtGap(a.bestGap)}</td><td>${fmtGap(a.meanGap)}</td><td>${a.cpu.toFixed(1)}</td></tr>`;
+  }
+  document.getElementById("cost-table").innerHTML = html + `</tbody>`;
+
+  document.getElementById("tests-desc").textContent =
+    `Two-sided Wilcoxon rank-sum test between the final costs of every pair of algorithms on ${x.name}, α = ${DATA.alpha}.`;
+  let pairs = `<caption>Per instance, over the runs</caption><thead><tr><th class="l">Comparison</th><th>Mean gap</th><th>p-value</th><th class="l">Result</th></tr></thead><tbody>`;
+  for (const pr of x.pairs) {
+    const res = pr.better === null ? `<span class="chip tie"><b>=</b>no significant difference</span>`
+      : `<span class="chip better"><b>≠</b>${LABEL[pr.better]} is better</span>`;
+    pairs += `<tr><td class="l text">${swatch(pr.a)} ${LABEL[pr.a]} vs ${swatch(pr.b)} ${LABEL[pr.b]}</td>` +
+      `<td>${fmtGap(x.algorithms[pr.a].meanGap)} vs ${fmtGap(x.algorithms[pr.b].meanGap)}</td><td>${fmtP(pr.p)}</td><td class="l">${res}</td></tr>`;
+  }
+  document.getElementById("pair-table").innerHTML = pairs + `</tbody>`;
+
+  const A = p.across, box = document.getElementById("across");
+  if (A.instances < 2) {
+    box.innerHTML = `<p class="muted" style="margin-top:1rem">Tests over the instance set (Wilcoxon signed-rank paired by instance, with Holm's correction, and Friedman's test) need at least two instances; this protocol has ${A.instances}. They appear here once more instances are collected.</p>`;
+    return;
+  }
+  let t = `<div class="table-frame" style="margin-top:1.25rem"><table><caption>Over the ${A.instances} instances, on the mean gap per instance</caption>` +
+    `<thead><tr><th class="l">Test</th><th>Statistic</th><th>p-value</th><th>Holm p</th><th class="l">Result</th></tr></thead><tbody>`;
+  for (const s of A.signedRank) {
+    const sig = s.holm < A.alpha;
+    t += `<tr><td class="l text">Wilcoxon signed-rank, ${LABEL[CAND]} vs ${LABEL[s.other]}</td><td>W+ ${s.wPlus} · W− ${s.wMinus}</td><td>${fmtP(s.p)}</td><td>${fmtP(s.holm)}</td>` +
+      `<td class="l">${sig ? `<span class="chip better"><b>≠</b>${LABEL[s.lower ? CAND : s.other]} has lower gaps</span>` : `<span class="chip tie"><b>=</b>no significant difference</span>`}</td></tr>`;
+  }
+  if (A.friedman) {
+    t += `<tr><td class="l text">Friedman, all algorithms</td><td>avg. ranks ${Object.entries(A.friedman.ranks).map(([n, r]) => `${LABEL[n]} ${r.toFixed(2)}`).join(", ")}</td><td>${fmtP(A.friedman.p)}</td><td>—</td>` +
+      `<td class="l">${A.friedman.p < A.alpha ? `<span class="chip better"><b>≠</b>the algorithms differ</span>` : `<span class="chip tie"><b>=</b>no significant difference</span>`}</td></tr>`;
+  }
+  box.innerHTML = t + `</tbody></table></div>`;
+}
+
+/* ---------- notes ---------- */
+function renderNotes() {
+  document.getElementById("protocol-list").innerHTML = DATA.protocols.map(p => `<li>${protocolInfo(p).text}</li>`).join("");
+  const setup = [
+    `Instances from the X set of Uchoa et al. (2017); BKS and their solutions from CVRPLIB (via the PyVRP instance repository), each checked for feasibility and cost.`,
+    `All runs on one thread of the same machine (${DATA.machine.cpu}), at most one run per physical core; CPU time is measured per process.`,
+    `Seeds 1, 2, …, the same for every algorithm.`,
+    `L-SHADE and DM-L-SHADE: population 18·n, memory size 6, archive rate 2.6, p-best rate 0.11; DM-L-SHADE mines 14.68% of an elite set of 10% of the population every 168 generations.`,
+    `HGS-CVRP ${DATA.machine.hgs ? `(commit ${DATA.machine.hgs}) ` : ""}with its default parameters; its convergence curve comes from its progress log (best feasible cost every 100 iterations).`,
+  ];
+  document.getElementById("setup-list").innerHTML = setup.map(s => `<li>${s}</li>`).join("");
+  const reading = [
+    `L-SHADE and DM-L-SHADE see only a vector of random keys in [0, 1): the keys are sorted into one tour over all customers, which is cut into a new route whenever the next customer would exceed the capacity. There is no local search and the cut is greedy, while HGS-CVRP uses an optimal split and intensive local search, so its results are an upper reference rather than a peer.`,
+    `The comparison of DM-L-SHADE with L-SHADE isolates the contribution of pattern mining, since both share the encoding, the decoder and the budget.`,
+    `Gap = 100 × (cost − BKS) / BKS, as in Vidal (2022).`,
+  ];
+  document.getElementById("reading-list").innerHTML = reading.map(s => `<li>${s}</li>`).join("");
+  document.getElementById("footer").innerHTML = `Generated by <code>experiments/cvrplib_report.py</code> from the results of <code>experiments/cvrplib_collect.py</code>.`;
+}
+
+function renderAll() {
+  renderControls();
+  renderSummary();
+  renderConvergence();
+  renderStrip();
+  renderTables();
+}
+
+document.getElementById("conv-chart").addEventListener("keydown", ev => {
+  if (ev.key !== "ArrowLeft" && ev.key !== "ArrowRight") return;
+  ev.preventDefault();
+  const n = proto().settings.checkpoint_fractions.length;
+  const cur = state.hover === null ? (ev.key === "ArrowLeft" ? n : -1) : state.hover;
+  showConvHover(Math.min(n - 1, Math.max(0, cur + (ev.key === "ArrowLeft" ? -1 : 1))));
+});
+let resizeTimer, lastWidth = 0;
+new ResizeObserver(entries => {
+  const w = Math.round(entries[0].contentRect.width);
+  if (w === lastWidth) return;
+  lastWidth = w;
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => { renderConvergence(); renderStrip(); }, 80);
+}).observe(document.getElementById("conv-chart"));
+
+renderHeader();
+renderNotes();
+renderAll();
+</script>
