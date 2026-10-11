@@ -2,7 +2,7 @@
 
 #include "problems/set_covering_problem.h"
 
-void runSetCoveringDemo(AlgorithmType algorithm_type, int n_blocks, int block_size, bool show_time) {
+void runSetCoveringDemo(const AlgorithmSpec &algorithm, int n_blocks, int block_size, bool show_time) {
   cout << "\n-------------------------------------------------------" << endl;
   cout << "Set Covering demo (random-key encoding), " << n_blocks << " blocks x "
        << block_size << " elements\n" << endl;
@@ -17,7 +17,7 @@ void runSetCoveringDemo(AlgorithmType algorithm_type, int n_blocks, int block_si
   config.arc_rate = 2.6;
   config.p_best_rate = 0.11;
 
-  searchAlgorithm *alg = createAlgorithm(algorithm_type, set_covering, config);
+  searchAlgorithm *alg = createAlgorithm(algorithm, set_covering, config);
   Fitness gap_to_optimum = runAlgorithm(alg, show_time);
   delete alg;
 

@@ -29,6 +29,6 @@ struct CVRPLibSolverOptions {
 // budget is either MaxFES = 10000*D, with costs recorded at 0.01, 0.02, 0.03,
 // 0.05, 0.1, ..., 1.0 x MaxFES, or a CPU time (cpu_seconds), with costs
 // recorded at 1, 2, 5, 10, 15, 20, 30, 50, 75 and 100% of it as in Vidal (2022).
-void runCVRPLibSolver(AlgorithmType algorithm_type, const CVRPLibSolverOptions &options);
+void runCVRPLibSolver(const AlgorithmSpec &algorithm, const CVRPLibSolverOptions &options);
 
 #endif

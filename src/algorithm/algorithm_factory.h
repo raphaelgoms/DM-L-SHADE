@@ -5,7 +5,26 @@
 
 enum class AlgorithmType { LSHADE, DMLSHADE };
 
-searchAlgorithm *createAlgorithm(AlgorithmType algorithm_type, shared_ptr<Problem> problem, const SHADEConfig &config);
+// Parameters of DM-L-SHADE's pattern mining (unused by L-SHADE). The
+// defaults are the tuned values used in all the reported experiments; the
+// CLI can override them (--elite-rate, --clusters-rate, --mining-step).
+struct DMLSHADEParameters {
+  // Elite set size as a fraction of the initial population.
+  double elite_rate = 0.1;
+  // Number of clusters (patterns) as a fraction of the elite size; <= 0
+  // lets X-means choose the number of clusters instead of K-means.
+  double clusters_rate = 0.1468;
+  // Mine the elite every this many generations.
+  int mining_generation_step = 168;
+};
+
+// Which algorithm to build, with its algorithm-specific parameters.
+struct AlgorithmSpec {
+  AlgorithmType type = AlgorithmType::LSHADE;
+  DMLSHADEParameters dmlshade;
+};
+
+searchAlgorithm *createAlgorithm(const AlgorithmSpec &algorithm, shared_ptr<Problem> problem, const SHADEConfig &config);
 
 // Runs the algorithm and, if requested, prints how long it took. Kept off by
 // default since timing isn't meaningful when comparing across machines/runs.

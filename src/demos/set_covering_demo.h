@@ -10,6 +10,6 @@
 // The instance is built out of independent blocks with a cheap "whole"
 // subset and a more expensive "two halves" alternative for each, so the
 // optimal total cost (one whole subset per block) is known in closed form.
-void runSetCoveringDemo(AlgorithmType algorithm_type, int n_blocks, int block_size, bool show_time);
+void runSetCoveringDemo(const AlgorithmSpec &algorithm, int n_blocks, int block_size, bool show_time);
 
 #endif

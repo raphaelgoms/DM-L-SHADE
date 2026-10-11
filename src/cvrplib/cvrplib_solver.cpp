@@ -26,7 +26,7 @@ void writeSolution(const std::string &path, const std::vector<std::vector<int>> 
 
 }  // namespace
 
-void runCVRPLibSolver(AlgorithmType algorithm_type, const CVRPLibSolverOptions &options) {
+void runCVRPLibSolver(const AlgorithmSpec &algorithm, const CVRPLibSolverOptions &options) {
   CVRPLibInstance instance = loadCVRPLibInstance(options.instance_path);
   int n_customers = instance.problem->numCustomers();
 
@@ -71,7 +71,7 @@ void runCVRPLibSolver(AlgorithmType algorithm_type, const CVRPLibSolverOptions &
   for (int run = 0; run < options.num_runs; run++) {
     // A fresh copy per run, so the routes it keeps belong to this run only.
     auto problem = std::make_shared<CVRPProblem>(*instance.problem);
-    searchAlgorithm *alg = createAlgorithm(algorithm_type, problem, config);
+    searchAlgorithm *alg = createAlgorithm(algorithm, problem, config);
     double cost = offset + runAlgorithm(alg, options.show_time);
     costs.push_back(cost);
     if (run == 0 || cost < best_cost) {

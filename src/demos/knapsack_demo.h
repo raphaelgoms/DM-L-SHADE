@@ -8,6 +8,6 @@
 // vector, decoded into a greedily packed item set only inside
 // KnapsackProblem's evaluate(). The instance is built so the optimal packed
 // value is known in closed form, letting us check how close the solver gets.
-void runKnapsackDemo(AlgorithmType algorithm_type, int n_items, bool show_time);
+void runKnapsackDemo(const AlgorithmSpec &algorithm, int n_items, bool show_time);
 
 #endif

@@ -9,6 +9,6 @@
 // vehicle routes only inside CVRPProblem's evaluate(). The instance is built
 // out of well-separated, capacity-matched customer clusters so the optimal
 // total distance (one dedicated route per cluster) is known in closed form.
-void runCVRPDemo(AlgorithmType algorithm_type, int n_clusters, int customers_per_cluster, bool show_time);
+void runCVRPDemo(const AlgorithmSpec &algorithm, int n_clusters, int customers_per_cluster, bool show_time);
 
 #endif

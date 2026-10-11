@@ -2,16 +2,12 @@
 
 #include <chrono>
 
-searchAlgorithm *createAlgorithm(AlgorithmType algorithm_type, shared_ptr<Problem> problem, const SHADEConfig &config) {
-  if (algorithm_type == AlgorithmType::DMLSHADE) {
-    //DM-L-SHADE parameters
-    double elite_rate = 0.1;
-    double clusters_rate = 0.1468;
-    int mining_generation_step = 168;
-
-    int max_elite_size = std::round(elite_rate * config.pop_size);
-    int number_of_patterns = std::round(clusters_rate * max_elite_size);
-    return new DMLSHADE(problem, config, max_elite_size, number_of_patterns, mining_generation_step);
+searchAlgorithm *createAlgorithm(const AlgorithmSpec &algorithm, shared_ptr<Problem> problem, const SHADEConfig &config) {
+  if (algorithm.type == AlgorithmType::DMLSHADE) {
+    const DMLSHADEParameters &params = algorithm.dmlshade;
+    int max_elite_size = std::round(params.elite_rate * config.pop_size);
+    int number_of_patterns = std::round(params.clusters_rate * max_elite_size);
+    return new DMLSHADE(problem, config, max_elite_size, number_of_patterns, params.mining_generation_step);
   }
 
   return new LSHADE(problem, config);

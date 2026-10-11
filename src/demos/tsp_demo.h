@@ -8,6 +8,6 @@
 // vector, decoded into a permutation of cities only inside TSPProblem's
 // evaluate(). Cities are placed on a circle so the optimal tour length is
 // known in closed form, letting us check how close the solver gets to it.
-void runTSPDemo(AlgorithmType algorithm_type, int n_cities, bool show_time);
+void runTSPDemo(const AlgorithmSpec &algorithm, int n_cities, bool show_time);
 
 #endif

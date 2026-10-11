@@ -89,7 +89,7 @@ static shared_ptr<Problem> createBenchmarkProblem(BenchmarkType benchmark_type, 
   }
 }
 
-static void runBenchmark(BenchmarkType benchmark_type, AlgorithmType algorithm_type, int function_start, int function_end, int problem_size, int num_runs, bool show_time, bool record_checkpoints) {
+static void runBenchmark(BenchmarkType benchmark_type, const AlgorithmSpec &algorithm, int function_start, int function_end, int problem_size, int num_runs, bool show_time, bool record_checkpoints) {
   SHADEConfig config;
   config.pop_size = (int)round(problem_size * 18);
   config.max_num_evaluations = benchmarkMaxEvaluations(benchmark_type, problem_size);
@@ -121,7 +121,7 @@ static void runBenchmark(BenchmarkType benchmark_type, AlgorithmType algorithm_t
     for (int j = 0; j < num_runs; j++) {
       auto problem = createBenchmarkProblem(benchmark_type, function_number, problem_size);
 
-      searchAlgorithm *alg = createAlgorithm(algorithm_type, problem, config);
+      searchAlgorithm *alg = createAlgorithm(algorithm, problem, config);
       bsf_fitness_array[j] = runAlgorithm(alg, show_time);
       if (record_checkpoints) {
         // One line with the error at each checkpoint; the last one is the
@@ -174,7 +174,7 @@ int main(int argc, char **argv) {
   int function_end = 30;
   bool function_range_explicit = false;
   int requested_function = 1;
-  AlgorithmType algorithm_type = AlgorithmType::LSHADE;
+  AlgorithmSpec algorithm;  // L-SHADE unless --algorithm says otherwise
   BenchmarkType benchmark_type = BenchmarkType::CEC2014;
   // --benchmark cvrplib solves a CVRPLIB instance instead of a CEC suite.
   bool cvrplib = false;
@@ -272,6 +272,24 @@ int main(int argc, char **argv) {
         return 1;
       }
       i++;
+    } else if (strcmp(argv[i], "--elite-rate") == 0 && i + 1 < argc) {
+      algorithm.dmlshade.elite_rate = atof(argv[i + 1]);
+      if (algorithm.dmlshade.elite_rate <= 0 || algorithm.dmlshade.elite_rate > 1) {
+        cerr << "Invalid elite rate. Please use a value in (0, 1]." << endl;
+        return 1;
+      }
+      i++;
+    } else if (strcmp(argv[i], "--clusters-rate") == 0 && i + 1 < argc) {
+      // <= 0 lets X-means choose the number of clusters.
+      algorithm.dmlshade.clusters_rate = atof(argv[i + 1]);
+      i++;
+    } else if (strcmp(argv[i], "--mining-step") == 0 && i + 1 < argc) {
+      algorithm.dmlshade.mining_generation_step = atoi(argv[i + 1]);
+      if (algorithm.dmlshade.mining_generation_step < 1) {
+        cerr << "Invalid mining step. Please use a number of generations >= 1." << endl;
+        return 1;
+      }
+      i++;
     } else if (strcmp(argv[i], "--instance") == 0 && i + 1 < argc) {
       instance_path = argv[i + 1];
       i++;
@@ -300,9 +318,9 @@ int main(int argc, char **argv) {
       for (auto &c : algorithm_name) c = tolower(c);
 
       if (algorithm_name == "lshade") {
-        algorithm_type = AlgorithmType::LSHADE;
+        algorithm.type = AlgorithmType::LSHADE;
       } else if (algorithm_name == "dmlshade" || algorithm_name == "dm-lshade") {
-        algorithm_type = AlgorithmType::DMLSHADE;
+        algorithm.type = AlgorithmType::DMLSHADE;
       } else {
         cerr << "Invalid algorithm. Please use \"lshade\" or \"dmlshade\"." << endl;
         return 1;
@@ -352,7 +370,7 @@ int main(int argc, char **argv) {
     options.record_checkpoints = record_checkpoints;
     options.cpu_seconds = cpu_seconds;
     try {
-      runCVRPLibSolver(algorithm_type, options);
+      runCVRPLibSolver(algorithm, options);
     } catch (const std::exception &e) {
       cerr << "Error: " << e.what() << endl;
       return 1;
@@ -361,27 +379,27 @@ int main(int argc, char **argv) {
   }
 
   if (sphere_demo) {
-    runSphereDemo(algorithm_type, problem_size, show_time);
+    runSphereDemo(algorithm, problem_size, show_time);
     return 0;
   }
 
   if (tsp_demo) {
-    runTSPDemo(algorithm_type, tsp_n_cities, show_time);
+    runTSPDemo(algorithm, tsp_n_cities, show_time);
     return 0;
   }
 
   if (knapsack_demo) {
-    runKnapsackDemo(algorithm_type, knapsack_n_items, show_time);
+    runKnapsackDemo(algorithm, knapsack_n_items, show_time);
     return 0;
   }
 
   if (cvrp_demo) {
-    runCVRPDemo(algorithm_type, cvrp_n_clusters, cvrp_cluster_size, show_time);
+    runCVRPDemo(algorithm, cvrp_n_clusters, cvrp_cluster_size, show_time);
     return 0;
   }
 
   if (set_covering_demo) {
-    runSetCoveringDemo(algorithm_type, set_covering_n_blocks, set_covering_block_size, show_time);
+    runSetCoveringDemo(algorithm, set_covering_n_blocks, set_covering_block_size, show_time);
     return 0;
   }
 
@@ -391,7 +409,7 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  runBenchmark(benchmark_type, algorithm_type, function_start, function_end, problem_size, num_runs, show_time, record_checkpoints);
+  runBenchmark(benchmark_type, algorithm, function_start, function_end, problem_size, num_runs, show_time, record_checkpoints);
 
   return 0;
 }

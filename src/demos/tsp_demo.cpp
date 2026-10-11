@@ -2,7 +2,7 @@
 
 #include "problems/tsp_problem.h"
 
-void runTSPDemo(AlgorithmType algorithm_type, int n_cities, bool show_time) {
+void runTSPDemo(const AlgorithmSpec &algorithm, int n_cities, bool show_time) {
   cout << "\n-------------------------------------------------------" << endl;
   cout << "TSP demo (random-key encoding), number of cities = " << n_cities << "\n" << endl;
 
@@ -15,7 +15,7 @@ void runTSPDemo(AlgorithmType algorithm_type, int n_cities, bool show_time) {
   config.arc_rate = 2.6;
   config.p_best_rate = 0.11;
 
-  searchAlgorithm *alg = createAlgorithm(algorithm_type, tsp, config);
+  searchAlgorithm *alg = createAlgorithm(algorithm, tsp, config);
   Fitness gap_to_optimum = runAlgorithm(alg, show_time);
   delete alg;
 

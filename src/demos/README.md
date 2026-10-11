@@ -87,7 +87,7 @@ Create `src/demos/rastrigin_solve.h`:
 
 #include "algorithm/algorithm_factory.h"
 
-void solveRastrigin(AlgorithmType algorithm_type, int problem_size, bool show_time);
+void solveRastrigin(const AlgorithmSpec &algorithm, int problem_size, bool show_time);
 
 #endif
 ```
@@ -99,7 +99,7 @@ and `src/demos/rastrigin_solve.cpp`:
 
 #include "problems/rastrigin_problem.h"
 
-void solveRastrigin(AlgorithmType algorithm_type, int problem_size, bool show_time) {
+void solveRastrigin(const AlgorithmSpec &algorithm, int problem_size, bool show_time) {
   auto problem = make_shared<RastriginProblem>(problem_size);
 
   SHADEConfig config;
@@ -109,7 +109,7 @@ void solveRastrigin(AlgorithmType algorithm_type, int problem_size, bool show_ti
   config.arc_rate = 2.6;
   config.p_best_rate = 0.11;
 
-  searchAlgorithm *alg = createAlgorithm(algorithm_type, problem, config);
+  searchAlgorithm *alg = createAlgorithm(algorithm, problem, config);
   Fitness gap_to_optimum = runAlgorithm(alg, show_time);
   delete alg;
 
@@ -132,7 +132,7 @@ bool rastrigin = false;                    // with the other flags in main()
   rastrigin = true;
 
 if (rastrigin) {                           // next to the other `if (..._demo)` blocks
-  solveRastrigin(algorithm_type, problem_size, show_time);
+  solveRastrigin(algorithm, problem_size, show_time);
   return 0;
 }
 ```
@@ -224,7 +224,7 @@ inline std::shared_ptr<TSPProblem> makeCircleTSPInstance(int n_cities, double ra
 Set the budget proportional to the number of decision variables, then create and run the algorithm. This is the TSP demo, which uses the circle instance:
 
 ```cpp
-void runTSPDemo(AlgorithmType algorithm_type, int n_cities, bool show_time) {
+void runTSPDemo(const AlgorithmSpec &algorithm, int n_cities, bool show_time) {
   cout << "\n-------------------------------------------------------" << endl;
   cout << "TSP demo (random-key encoding), number of cities = " << n_cities << "\n" << endl;
 
@@ -237,7 +237,7 @@ void runTSPDemo(AlgorithmType algorithm_type, int n_cities, bool show_time) {
   config.arc_rate = 2.6;
   config.p_best_rate = 0.11;
 
-  searchAlgorithm *alg = createAlgorithm(algorithm_type, tsp, config);
+  searchAlgorithm *alg = createAlgorithm(algorithm, tsp, config);
   Fitness gap_to_optimum = runAlgorithm(alg, show_time);
   delete alg;
 
@@ -274,7 +274,7 @@ int tsp_n_cities = 15;
   i++;
 
 if (tsp_demo) {                            // next to the other `if (..._demo)` blocks
-  runTSPDemo(algorithm_type, tsp_n_cities, show_time);
+  runTSPDemo(algorithm, tsp_n_cities, show_time);
   return 0;
 }
 ```

@@ -2,7 +2,7 @@
 
 #include "problems/knapsack_problem.h"
 
-void runKnapsackDemo(AlgorithmType algorithm_type, int n_items, bool show_time) {
+void runKnapsackDemo(const AlgorithmSpec &algorithm, int n_items, bool show_time) {
   cout << "\n-------------------------------------------------------" << endl;
   cout << "Knapsack demo (random-key encoding), number of items = " << n_items << "\n" << endl;
 
@@ -15,7 +15,7 @@ void runKnapsackDemo(AlgorithmType algorithm_type, int n_items, bool show_time) 
   config.arc_rate = 2.6;
   config.p_best_rate = 0.11;
 
-  searchAlgorithm *alg = createAlgorithm(algorithm_type, knapsack, config);
+  searchAlgorithm *alg = createAlgorithm(algorithm, knapsack, config);
   Fitness gap_to_optimum = runAlgorithm(alg, show_time);
   delete alg;
 

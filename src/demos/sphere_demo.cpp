@@ -1,6 +1,6 @@
 #include "demos/sphere_demo.h"
 
-void runSphereDemo(AlgorithmType algorithm_type, int problem_size, bool show_time) {
+void runSphereDemo(const AlgorithmSpec &algorithm, int problem_size, bool show_time) {
   cout << "\n-------------------------------------------------------" << endl;
   cout << "Sphere function demo, Dimension size = " << problem_size << "\n" << endl;
 
@@ -18,7 +18,7 @@ void runSphereDemo(AlgorithmType algorithm_type, int problem_size, bool show_tim
   config.arc_rate = 2.6;
   config.p_best_rate = 0.11;
 
-  searchAlgorithm *alg = createAlgorithm(algorithm_type, sphere, config);
+  searchAlgorithm *alg = createAlgorithm(algorithm, sphere, config);
   Fitness result = runAlgorithm(alg, show_time);
   cout << "best fitness found = " << result << endl;
   delete alg;

@@ -2,7 +2,7 @@
 
 #include "problems/cvrp_problem.h"
 
-void runCVRPDemo(AlgorithmType algorithm_type, int n_clusters, int customers_per_cluster, bool show_time) {
+void runCVRPDemo(const AlgorithmSpec &algorithm, int n_clusters, int customers_per_cluster, bool show_time) {
   int n_customers = n_clusters * customers_per_cluster;
 
   cout << "\n-------------------------------------------------------" << endl;
@@ -18,7 +18,7 @@ void runCVRPDemo(AlgorithmType algorithm_type, int n_clusters, int customers_per
   config.arc_rate = 2.6;
   config.p_best_rate = 0.11;
 
-  searchAlgorithm *alg = createAlgorithm(algorithm_type, cvrp, config);
+  searchAlgorithm *alg = createAlgorithm(algorithm, cvrp, config);
   Fitness gap_to_optimum = runAlgorithm(alg, show_time);
   delete alg;
 
