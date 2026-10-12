@@ -14,20 +14,23 @@ See [src/demos/README.md](src/demos/README.md) for the list of demos and their C
 
 ## Citation
 
-If you use this code in your research, please cite:
+The paper describing this research is under review:
 
-> R. G. Santos, A. Plastino and A. C. M. de Oliveira, "DMC-GRASP: A Continuous GRASP hybridized with Data Mining," *2022 IEEE Congress on Evolutionary Computation (CEC)*, Padua, Italy, 2022. DOI: [10.1109/CEC55065.2022.9870264](https://doi.org/10.1109/CEC55065.2022.9870264).
+> R. G. Santos, A. C. M. de Oliveira and A. Plastino, "Combining a Differential Evolution Heuristic with Data Mining," submitted to *SN Computer Science* (under review).
 
 ```bibtex
-@inproceedings{santos2022dmcgrasp,
-  author    = {Santos, Raphael Gomes and Plastino, Alexandre and de Oliveira, Alexandre C. M.},
-  title     = {{DMC-GRASP}: A Continuous {GRASP} hybridized with Data Mining},
-  booktitle = {2022 IEEE Congress on Evolutionary Computation (CEC)},
-  address   = {Padua, Italy},
-  year      = {2022},
-  doi       = {10.1109/CEC55065.2022.9870264}
+@unpublished{santos2026dmlshade,
+  author = {Santos, Raphael Gomes and de Oliveira, Alexandre C. M. and Plastino, Alexandre},
+  title  = {Combining a Differential Evolution Heuristic with Data Mining},
+  note   = {Submitted to SN Computer Science, under review}
 }
 ```
+
+## Related work
+
+The same data-mining hybridization applied to Continuous GRASP:
+
+> R. G. Santos, A. Plastino and A. C. M. de Oliveira, "DMC-GRASP: A Continuous GRASP hybridized with Data Mining," *2022 IEEE Congress on Evolutionary Computation (CEC)*, Padua, Italy, 2022. DOI: [10.1109/CEC55065.2022.9870264](https://doi.org/10.1109/CEC55065.2022.9870264).
 
 ## References
 
