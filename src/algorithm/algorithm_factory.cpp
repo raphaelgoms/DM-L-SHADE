@@ -3,10 +3,14 @@
 #include <chrono>
 
 searchAlgorithm *createAlgorithm(const AlgorithmSpec &algorithm, shared_ptr<Problem> problem, const SHADEConfig &config) {
-  if (algorithm.type == AlgorithmType::DMLSHADE) {
+  if (algorithm.type == AlgorithmType::DMLSHADE || algorithm.type == AlgorithmType::DMLSHADE_LS) {
     const DMLSHADEParameters &params = algorithm.dmlshade;
     int max_elite_size = std::round(params.elite_rate * config.pop_size);
     int number_of_patterns = std::round(params.clusters_rate * max_elite_size);
+    if (algorithm.type == AlgorithmType::DMLSHADE_LS) {
+      return new DMLSHADELS(problem, config, max_elite_size, number_of_patterns, params.mining_generation_step,
+                            params.local_search_rate, params.local_search_method);
+    }
     return new DMLSHADE(problem, config, max_elite_size, number_of_patterns, params.mining_generation_step);
   }
 

@@ -194,6 +194,51 @@ public:
   vector<tuple<Individual, double>> elite;
 };
 
+// Local search DM-L-SHADE-LS applies around each injected pattern.
+enum class LocalSearchMethod { ES, HOOKE_JEEVES };
+
+// DM-L-SHADE with a local search ((1+1)-ES or Hooke-Jeeves) around each
+// injected pattern (dm_lshade_ls.cpp).
+class DMLSHADELS: public searchAlgorithm {
+public:
+  DMLSHADELS(shared_ptr<Problem> problem, const SHADEConfig &config,
+             int max_elite_size, int number_of_patterns, int mining_generation_step,
+             double local_search_rate, LocalSearchMethod local_search_method);
+
+  virtual Fitness run();
+  void setSHADEParameters();
+  void reducePopulationWithSort(vector<Individual> &pop, vector<Fitness> &fitness);
+  void operateCurrentToPBest1BinWithArchive(const vector<Individual> &pop, Individual child, int &target, int &p_best_individual, variable &scaling_factor, variable &cross_rate, const vector<Individual> &archive, int &arc_ind_count);
+
+  void updateElite(const vector<Individual> &pop, vector<Fitness> &fitness, int* sorted_indexes);
+  vector<map<int, double>> minePatterns(vector<vector<double>> &spreads);
+  void localSearch(Individual x, Fitness &x_fitness, const vector<double> &sigma0,
+                   int max_evaluations, Individual candidate, int &nfes,
+                   Individual bsf_solution, Fitness &bsf_fitness);
+  void evolutionStrategy(Individual x, Fitness &x_fitness, const vector<double> &sigma0,
+                         int max_evaluations, Individual candidate, int &nfes,
+                         Individual bsf_solution, Fitness &bsf_fitness);
+  void hookeJeeves(Individual x, Fitness &x_fitness, const vector<double> &delta0,
+                   int max_evaluations, int &nfes, Individual bsf_solution, Fitness &bsf_fitness);
+  Fitness evaluateCounted(Individual solution, int &nfes, Individual bsf_solution, Fitness &bsf_fitness);
+
+  int arc_size;
+  double arc_rate;
+  variable p_best_rate;
+  int memory_size;
+  int reduction_ind_num;
+
+  int generation;
+  int max_elite_size;
+  int number_of_patterns;
+  int mining_generation_step;
+  // Local search evaluations per pattern = local_search_rate x dimension.
+  double local_search_rate;
+  LocalSearchMethod local_search_method;
+
+  vector<tuple<Individual, double>> elite;
+};
+
 #endif
 
 

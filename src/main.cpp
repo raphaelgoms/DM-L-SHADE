@@ -292,6 +292,27 @@ int main(int argc, char **argv) {
         return 1;
       }
       i++;
+    } else if (strcmp(argv[i], "--ls-rate") == 0 && i + 1 < argc) {
+      algorithm.dmlshade.local_search_rate = atof(argv[i + 1]);
+      // 0 turns the local search off: the patterns are only evaluated.
+      if (algorithm.dmlshade.local_search_rate < 0) {
+        cerr << "Invalid local search rate. Please use a value >= 0." << endl;
+        return 1;
+      }
+      i++;
+    } else if (strcmp(argv[i], "--ls-method") == 0 && i + 1 < argc) {
+      string method_name = argv[i + 1];
+      for (auto &c : method_name) c = tolower(c);
+
+      if (method_name == "es") {
+        algorithm.dmlshade.local_search_method = LocalSearchMethod::ES;
+      } else if (method_name == "hooke-jeeves" || method_name == "hj") {
+        algorithm.dmlshade.local_search_method = LocalSearchMethod::HOOKE_JEEVES;
+      } else {
+        cerr << "Invalid local search method. Please use \"es\" or \"hooke-jeeves\"." << endl;
+        return 1;
+      }
+      i++;
     } else if (strcmp(argv[i], "--instance") == 0 && i + 1 < argc) {
       instance_path = argv[i + 1];
       i++;
@@ -355,8 +376,10 @@ int main(int argc, char **argv) {
         algorithm.type = AlgorithmType::LSHADE;
       } else if (algorithm_name == "dmlshade" || algorithm_name == "dm-lshade") {
         algorithm.type = AlgorithmType::DMLSHADE;
+      } else if (algorithm_name == "dmlshade-ls" || algorithm_name == "dm-lshade-ls") {
+        algorithm.type = AlgorithmType::DMLSHADE_LS;
       } else {
-        cerr << "Invalid algorithm. Please use \"lshade\" or \"dmlshade\"." << endl;
+        cerr << "Invalid algorithm. Please use \"lshade\", \"dmlshade\" or \"dmlshade-ls\"." << endl;
         return 1;
       }
       i++;

@@ -3,7 +3,7 @@
 
 #include "algorithm/algorithm.h"
 
-enum class AlgorithmType { LSHADE, DMLSHADE };
+enum class AlgorithmType { LSHADE, DMLSHADE, DMLSHADE_LS };
 
 // Parameters of DM-L-SHADE's pattern mining (unused by L-SHADE). The
 // defaults are the tuned values used in all the reported experiments; the
@@ -16,6 +16,11 @@ struct DMLSHADEParameters {
   double clusters_rate = 0.1468;
   // Mine the elite every this many generations.
   int mining_generation_step = 168;
+  // DM-L-SHADE-LS only: evaluations of the local search around each pattern,
+  // as a multiple of the dimension (--ls-rate); 0 only evaluates the patterns.
+  double local_search_rate = 10;
+  // DM-L-SHADE-LS only: which local search (--ls-method es|hooke-jeeves).
+  LocalSearchMethod local_search_method = LocalSearchMethod::ES;
 };
 
 // Which algorithm to build, with its algorithm-specific parameters.
