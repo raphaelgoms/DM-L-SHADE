@@ -31,11 +31,17 @@ void runCVRPLibSolver(const AlgorithmSpec &algorithm, const CVRPLibSolverOptions
   int n_customers = instance.problem->numCustomers();
 
   SHADEConfig config;
-  config.pop_size = (int)round(n_customers * 18);
+  config.pop_size = (int)round(n_customers * options.pop_rate);
   config.max_num_evaluations = n_customers * 10000;
-  config.memory_size = 6;
-  config.arc_rate = 2.6;
-  config.p_best_rate = 0.11;
+  config.memory_size = options.memory_size;
+  config.arc_rate = options.arc_rate;
+  config.p_best_rate = options.p_best_rate;
+  // L-SHADE reduces the population down to 4 and draws the p-best individual
+  // among the round(pop_size * p_best_rate) best ones from the start.
+  if (config.pop_size < 4 || (int)round(config.pop_size * config.p_best_rate) < 1) {
+    throw std::runtime_error("population too small: pop_rate x customers must be >= 4 and "
+                             "p_best_rate x population >= 1");
+  }
   if (options.cpu_seconds != 0) {
     config.max_cpu_seconds = options.cpu_seconds > 0 ? options.cpu_seconds : n_customers * 240.0 / 100.0;
     config.max_num_evaluations = UINT_MAX;

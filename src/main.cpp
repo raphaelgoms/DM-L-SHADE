@@ -181,6 +181,8 @@ int main(int argc, char **argv) {
   string instance_path;
   string solution_path;
   double cpu_seconds = 0;  // --cpu-time; negative means "tmax"
+  CVRPLibSolverOptions cvrplib_options;  // --pop-rate, --memory-size, --arc-rate, --p-best-rate
+  bool shade_parameters_explicit = false;
 
   for (int i = 1; i < argc; i++) {
     if (strcmp(argv[i], "--sphere") == 0) {
@@ -304,6 +306,38 @@ int main(int argc, char **argv) {
         }
       }
       i++;
+    } else if (strcmp(argv[i], "--pop-rate") == 0 && i + 1 < argc) {
+      cvrplib_options.pop_rate = atof(argv[i + 1]);
+      if (cvrplib_options.pop_rate <= 0) {
+        cerr << "Invalid population rate. Please use a value > 0." << endl;
+        return 1;
+      }
+      shade_parameters_explicit = true;
+      i++;
+    } else if (strcmp(argv[i], "--memory-size") == 0 && i + 1 < argc) {
+      cvrplib_options.memory_size = atoi(argv[i + 1]);
+      if (cvrplib_options.memory_size < 1) {
+        cerr << "Invalid memory size. Please use a value >= 1." << endl;
+        return 1;
+      }
+      shade_parameters_explicit = true;
+      i++;
+    } else if (strcmp(argv[i], "--arc-rate") == 0 && i + 1 < argc) {
+      cvrplib_options.arc_rate = atof(argv[i + 1]);
+      if (cvrplib_options.arc_rate < 0) {
+        cerr << "Invalid archive rate. Please use a value >= 0." << endl;
+        return 1;
+      }
+      shade_parameters_explicit = true;
+      i++;
+    } else if (strcmp(argv[i], "--p-best-rate") == 0 && i + 1 < argc) {
+      cvrplib_options.p_best_rate = atof(argv[i + 1]);
+      if (cvrplib_options.p_best_rate <= 0 || cvrplib_options.p_best_rate > 1) {
+        cerr << "Invalid p-best rate. Please use a value in (0, 1]." << endl;
+        return 1;
+      }
+      shade_parameters_explicit = true;
+      i++;
     } else if (strcmp(argv[i], "--solution") == 0 && i + 1 < argc) {
       solution_path = argv[i + 1];
       i++;
@@ -357,12 +391,17 @@ int main(int argc, char **argv) {
     return 1;
   }
 
+  if (shade_parameters_explicit && !cvrplib) {
+    cerr << "--pop-rate, --memory-size, --arc-rate and --p-best-rate apply to --benchmark cvrplib only." << endl;
+    return 1;
+  }
+
   if (cvrplib) {
     if (instance_path.empty()) {
       cerr << "--benchmark cvrplib requires --instance <file.vrp>." << endl;
       return 1;
     }
-    CVRPLibSolverOptions options;
+    CVRPLibSolverOptions options = cvrplib_options;
     options.instance_path = instance_path;
     options.solution_path = solution_path;
     options.num_runs = num_runs;
