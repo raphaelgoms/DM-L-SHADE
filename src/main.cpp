@@ -292,6 +292,28 @@ int main(int argc, char **argv) {
         return 1;
       }
       i++;
+    } else if (strcmp(argv[i], "--pattern-strategy") == 0 && i + 1 < argc) {
+      string strategy_name = argv[i + 1];
+      for (auto &c : strategy_name) c = tolower(c);
+
+      if (strategy_name == "original" || strategy_name == "1") {
+        algorithm.dmlshade.pattern_strategy = PatternStrategy::REPLACE_WORST;
+      } else if (strategy_name == "if-better" || strategy_name == "2") {
+        algorithm.dmlshade.pattern_strategy = PatternStrategy::REPLACE_IF_BETTER;
+      } else if (strategy_name == "pbest" || strategy_name == "3") {
+        algorithm.dmlshade.pattern_strategy = PatternStrategy::AS_PBEST;
+      } else {
+        cerr << "Invalid pattern strategy. Please use \"original\", \"if-better\" or \"pbest\"." << endl;
+        return 1;
+      }
+      i++;
+    } else if (strcmp(argv[i], "--pattern-pbest-generations") == 0 && i + 1 < argc) {
+      algorithm.dmlshade.pattern_pbest_generations = atoi(argv[i + 1]);
+      if (algorithm.dmlshade.pattern_pbest_generations < 1) {
+        cerr << "Invalid number of generations. Please use a value >= 1." << endl;
+        return 1;
+      }
+      i++;
     } else if (strcmp(argv[i], "--instance") == 0 && i + 1 < argc) {
       instance_path = argv[i + 1];
       i++;

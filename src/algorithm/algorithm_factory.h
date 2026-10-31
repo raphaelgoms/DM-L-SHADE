@@ -16,6 +16,12 @@ struct DMLSHADEParameters {
   double clusters_rate = 0.1468;
   // Mine the elite every this many generations.
   int mining_generation_step = 168;
+  // How the patterns are used (--pattern-strategy original|if-better|pbest).
+  PatternStrategy pattern_strategy = PatternStrategy::REPLACE_WORST;
+  // With --pattern-strategy pbest: for how many generations after each mining,
+  // counting the mining one, the patterns take the p-best's place
+  // (--pattern-pbest-generations).
+  int pattern_pbest_generations = 10;
 };
 
 // Which algorithm to build, with its algorithm-specific parameters.

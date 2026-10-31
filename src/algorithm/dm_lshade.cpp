@@ -15,9 +15,12 @@ using namespace pyclustering;
 using namespace pyclustering::clst;
 
 DMLSHADE::DMLSHADE(shared_ptr<Problem> problem, const SHADEConfig &config,
-                   int max_elite_size, int number_of_patterns, int mining_generation_step)
+                   int max_elite_size, int number_of_patterns, int mining_generation_step,
+                   PatternStrategy pattern_strategy, int pattern_pbest_generations)
   : searchAlgorithm(problem, config)
 {
+  this->pattern_strategy = pattern_strategy;
+  this->pattern_pbest_generations = pattern_pbest_generations;
   this->max_elite_size = max_elite_size;
   this->number_of_patterns = number_of_patterns;
   this->mining_generation_step = mining_generation_step;
@@ -126,6 +129,11 @@ Fitness DMLSHADE::run()
     // I'm using a map because the pattern does not necessarily have the same number 
     // of variables that a solution
     vector<map<int, double>> patterns;
+    Individual pattern_solution = (variable *)malloc(sizeof(variable) * problem_size);
+    // The patterns as plain vectors, for PatternStrategy::AS_PBEST, and how
+    // many more generations use them as p-best.
+    vector<vector<double>> pbest_patterns;
+    int pbest_generations_left = 0;
 
     // main loop
     while (!shouldStop(nfes, bsf_fitness))
@@ -141,13 +149,52 @@ Fitness DMLSHADE::run()
         updateElite(pop, fitness, sorted_array);
         if (generation % mining_generation_step == 0){
           patterns = minePatterns();
-
           int mpi = min((int)patterns.size(), pop_size); // max patterns insertions
-          for (size_t i = 0; i < mpi; i++) {
-            int idx = sorted_array[pop_size - 1 - i];
-            for (size_t j = 0; j < problem_size; j++) {
-                pop[idx][j] = patterns[i][j];
+
+          if (pattern_strategy == PatternStrategy::REPLACE_WORST) {
+            for (size_t i = 0; i < mpi; i++) {
+              int idx = sorted_array[pop_size - 1 - i];
+              for (size_t j = 0; j < problem_size; j++) {
+                  pop[idx][j] = patterns[i][j];
+              }
             }
+          } else if (pattern_strategy == PatternStrategy::AS_PBEST) {
+            pbest_patterns.clear();
+            pbest_generations_left = pattern_pbest_generations;
+            for (auto &pattern : patterns) {
+              vector<double> v(problem_size);
+              for (int j = 0; j < problem_size; j++)
+                  v[j] = pattern[j];
+              pbest_patterns.push_back(v);
+            }
+          } else {
+            // Each pattern is evaluated and replaces one of the worst
+            // individuals only when its fitness is better.
+            for (size_t i = 0; i < mpi && !shouldStop(nfes, bsf_fitness); i++) {
+              for (size_t j = 0; j < problem_size; j++)
+                  pattern_solution[j] = patterns[i][j];
+
+              Fitness pattern_fitness = problem->evaluate(pattern_solution);
+              nfes++;
+              if (problem->hasKnownOptimum() && (pattern_fitness - optimum) < epsilon)
+                  pattern_fitness = optimum;
+              if (pattern_fitness < bsf_fitness)
+              {
+                  bsf_fitness = pattern_fitness;
+                  for (int j = 0; j < problem_size; j++)
+                      bsf_solution[j] = pattern_solution[j];
+              }
+              recordCheckpoints(nfes, bsf_fitness);
+
+              int idx = sorted_array[pop_size - 1 - i];
+              if (pattern_fitness < fitness[idx]) {
+                  fitness[idx] = pattern_fitness;
+                  for (size_t j = 0; j < problem_size; j++)
+                      pop[idx][j] = pattern_solution[j];
+              }
+            }
+            if (shouldStop(nfes, bsf_fitness))
+              break;
           }
         }
 
@@ -184,8 +231,16 @@ Fitness DMLSHADE::run()
 
             // p-best individual is randomly selected from the top pop_size *  p_i members
             p_best_ind = sorted_array[rand() % p_num];
-            operateCurrentToPBest1BinWithArchive(pop, &children[target][0], target, p_best_ind, pop_sf[target], pop_cr[target], archive, arc_ind_count);
+            // With PatternStrategy::AS_PBEST, for pattern_pbest_generations
+            // generations after a mining a random pattern takes the place of
+            // the p-best individual.
+            const variable *p_best = pbest_patterns.empty() ? pop[p_best_ind]
+                                                            : pbest_patterns[rand() % pbest_patterns.size()].data();
+            operateCurrentToPBest1BinWithArchive(pop, &children[target][0], target, p_best, pop_sf[target], pop_cr[target], archive, arc_ind_count);
         }
+
+        if (!pbest_patterns.empty() && --pbest_generations_left <= 0)
+            pbest_patterns.clear();
 
         // evaluate the children's fitness values
         evaluatePopulation(children, children_fitness);
@@ -329,11 +384,12 @@ Fitness DMLSHADE::run()
         }
     }
 
+    free(pattern_solution);
     finishRun(nfes, bsf_fitness);
     return bsf_fitness - optimum;
 }
 
-void DMLSHADE::operateCurrentToPBest1BinWithArchive(const vector<Individual> &pop, Individual child, int &target, int &p_best_individual, variable &scaling_factor, variable &cross_rate, const vector<Individual> &archive, int &arc_ind_count) {
+void DMLSHADE::operateCurrentToPBest1BinWithArchive(const vector<Individual> &pop, Individual child, int &target, const variable *p_best, variable &scaling_factor, variable &cross_rate, const vector<Individual> &archive, int &arc_ind_count) {
   int r1, r2;
   
   do {
@@ -349,7 +405,7 @@ void DMLSHADE::operateCurrentToPBest1BinWithArchive(const vector<Individual> &po
     r2 -= pop_size;
     for (int i = 0; i < problem_size; i++) {
       if ((randDouble() < cross_rate) || (i == random_variable)) {
-	child[i] = pop[target][i] + scaling_factor * (pop[p_best_individual][i] - pop[target][i]) + scaling_factor * (pop[r1][i] - archive[r2][i]);
+	child[i] = pop[target][i] + scaling_factor * (p_best[i] - pop[target][i]) + scaling_factor * (pop[r1][i] - archive[r2][i]);
       }
       else {
 	child[i] = pop[target][i];
@@ -359,7 +415,7 @@ void DMLSHADE::operateCurrentToPBest1BinWithArchive(const vector<Individual> &po
   else {
     for (int i = 0; i < problem_size; i++) {
       if ((randDouble() < cross_rate) || (i == random_variable)) {
-	child[i] = pop[target][i] + scaling_factor * (pop[p_best_individual][i] - pop[target][i]) + scaling_factor * (pop[r1][i] - pop[r2][i]);
+	child[i] = pop[target][i] + scaling_factor * (p_best[i] - pop[target][i]) + scaling_factor * (pop[r1][i] - pop[r2][i]);
       }
       else {
 	child[i] = pop[target][i];
@@ -409,11 +465,11 @@ vector<map<int, double>> DMLSHADE::minePatterns()
 		solver.process(data, output_result);
 	}
 	
-    map<int, double> _pattern;
     vector<map<int, double>> patterns;
     auto centers = output_result.centers();
 	for(auto center:centers) {
-		for (size_t j = 0; j < problem_size; j++) {	
+		map<int, double> _pattern;
+		for (size_t j = 0; j < problem_size; j++) {
 			_pattern.insert(pair<int, double>(j, center[j]));
 		}
 		patterns.push_back(_pattern);

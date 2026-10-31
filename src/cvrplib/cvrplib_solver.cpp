@@ -32,7 +32,7 @@ void runCVRPLibSolver(const AlgorithmSpec &algorithm, const CVRPLibSolverOptions
 
   SHADEConfig config;
   config.pop_size = (int)round(n_customers * options.pop_rate);
-  config.max_num_evaluations = n_customers * 10000;
+  config.max_num_evaluations = n_customers * 100000;
   config.memory_size = options.memory_size;
   config.arc_rate = options.arc_rate;
   config.p_best_rate = options.p_best_rate;

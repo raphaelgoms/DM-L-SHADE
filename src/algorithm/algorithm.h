@@ -167,15 +167,24 @@ public:
   int reduction_ind_num;
 };
 
+// How DM-L-SHADE uses the mined patterns (--pattern-strategy).
+enum class PatternStrategy {
+  REPLACE_WORST,      // original: each pattern replaces one of the worst individuals
+  REPLACE_IF_BETTER,  // evaluated; replaces one of the worst only when better
+  AS_PBEST            // for some generations after each mining, a random pattern is the p-best of every mutation
+};
+
 class DMLSHADE: public searchAlgorithm {
 public:
   DMLSHADE(shared_ptr<Problem> problem, const SHADEConfig &config,
-           int max_elite_size, int number_of_patterns, int mining_generation_step);
+           int max_elite_size, int number_of_patterns, int mining_generation_step,
+           PatternStrategy pattern_strategy = PatternStrategy::REPLACE_WORST,
+           int pattern_pbest_generations = 10);
 
   virtual Fitness run();
   void setSHADEParameters();
   void reducePopulationWithSort(vector<Individual> &pop, vector<Fitness> &fitness);
-  void operateCurrentToPBest1BinWithArchive(const vector<Individual> &pop, Individual child, int &target, int &p_best_individual, variable &scaling_factor, variable &cross_rate, const vector<Individual> &archive, int &arc_ind_count);
+  void operateCurrentToPBest1BinWithArchive(const vector<Individual> &pop, Individual child, int &target, const variable *p_best, variable &scaling_factor, variable &cross_rate, const vector<Individual> &archive, int &arc_ind_count);
 
   void updateElite(const vector<Individual> &pop, vector<Fitness> &fitness, int* sorted_indexes);
   vector<map<int, double>> minePatterns();
@@ -190,6 +199,9 @@ public:
   int max_elite_size;
   int number_of_patterns;
   int mining_generation_step;
+  PatternStrategy pattern_strategy;
+  // With AS_PBEST: generations, counting the mining one, that use the patterns as p-best.
+  int pattern_pbest_generations;
 
   vector<tuple<Individual, double>> elite;
 };
