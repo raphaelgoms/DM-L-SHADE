@@ -17,7 +17,7 @@ struct CVRPLibSolverOptions {
   double cpu_seconds = 0;
   // L-SHADE parameters (--pop-rate, --memory-size, --arc-rate, --p-best-rate);
   // the defaults are those of the CEC runs.
-  double pop_rate = 18;  // initial population = pop_rate x customers
+  double pop_rate = 1;  // initial population = pop_rate x customers
   int memory_size = 6;
   double arc_rate = 2.6;
   double p_best_rate = 0.11;
