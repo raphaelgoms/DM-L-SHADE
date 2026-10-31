@@ -20,12 +20,18 @@ LDFLAGS = $(LIB_DIR)/libpyclustering.a -lm
 # src/ root, regardless of which subdirectory the including file lives in.
 CFLAGS = -I$(SRC_DIR) -I$(INC_DIR) -I$(INC_DIR)/pyclustering
 
+# -MMD -MP generate .d files so objects are rebuilt when a header changes
+DEPFLAGS = -MMD -MP
+DEPS := $(OBJS:.o=.d)
+
 $(TARGET): $(OBJS)
 	$(CC) -o $(TARGET) $(OBJS) $(OPTION) $(LDFLAGS)
 
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
 	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(OPTION) $(CFLAGS) $(DEPFLAGS) -c $< -o $@
+
+-include $(DEPS)
 
 clean:
 	rm -rf $(BUILD_DIR) $(TARGET)
