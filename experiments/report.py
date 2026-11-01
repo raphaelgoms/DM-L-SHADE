@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """Build an HTML report of the L-SHADE / DM-L-SHADE results of a CEC suite.
 
-Reads the result files written by cec2014_collect.py, cec2017_collect.py or
-cec2022_collect.py and fills experiments/templates/report.html with them,
-producing one self-contained page with:
+Reads the result files written by cec2014_collect.py, cec2017_collect.py,
+cec2022_collect.py or cec2026_collect.py and fills
+experiments/templates/report.html with them, producing one self-contained page with:
 
   * the per-dimension results tables of the suite's results template (best,
     worst, median, mean and std of the error at the end of the run);
   * the per-function comparison of the matching compare_cec20XX_results.py
     (Wilcoxon rank-sum test) and, where the rules define one, the suite's
-    score (CEC-2017 and CEC-2022 section 2.3; CEC-2014 has none);
+    score (CEC-2017 and CEC-2022 section 2.3, the CEC-2026 U-score; CEC-2014 has none);
   * convergence curves (median and interquartile range of the error at the
     suite's recording points) for every function.
 
@@ -18,6 +18,7 @@ be rebuilt as more of them are collected:
 
     python3 experiments/report.py --benchmark cec2017
     python3 experiments/report.py --benchmark cec2022 --participants <CEC2022 download>/Results_and_Ranking/Comparison
+    python3 experiments/report.py --benchmark cec2026 --participants <CEC2026 download>/Results-Data/SOP_CEC2026/SOP
 
 The report is written to experiments/results/<suite>/report.html by default.
 """
@@ -37,6 +38,7 @@ import zipfile
 from pathlib import Path
 
 from compare_cec2014_results import rank_sum_test
+from compare_cec2026_results import SIGNIFICANT_DIGITS, meeting_points, prepare_trials, within_points
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 TEMPLATE = Path(__file__).resolve().parent / "templates" / "report.html"
@@ -57,10 +59,28 @@ def fraction_checkpoints(dim, maxfes):
     return [round(fraction * maxfes) for fraction in FRACTIONS]
 
 
+def every_10d_checkpoints(dim, maxfes):
+    """CEC-2026: every 10*D evaluations."""
+    return list(range(10 * dim, maxfes + 1, 10 * dim))
+
+
 def cec2022_checkpoints(dim, maxfes):
     """CEC-2022: floor(D^(k/5-3) * MaxFES), k = 0..15 (as computed by the solver)."""
     return [math.floor(dim ** (k / 5 - 3) * maxfes + 1e-6) for k in range(16)]
 
+
+# The CEC-2017 functions in the numbering of the CEC-2026 competition (F2 is f3, ...).
+CEC2026_NAMES = {
+    1: "Bent Cigar", 2: "Zakharov", 3: "Rosenbrock", 4: "Rastrigin", 5: "Expanded Schaffer F6",
+    6: "Lunacek bi-Rastrigin", 7: "Non-continuous Rastrigin", 8: "Levy", 9: "Schwefel",
+    10: "Hybrid 1 (N=3)", 11: "Hybrid 2 (N=3)", 12: "Hybrid 3 (N=3)", 13: "Hybrid 4 (N=4)",
+    14: "Hybrid 5 (N=4)", 15: "Hybrid 6 (N=4)", 16: "Hybrid 7 (N=5)", 17: "Hybrid 8 (N=5)",
+    18: "Hybrid 9 (N=5)", 19: "Hybrid 10 (N=6)",
+    20: "Composition 1 (N=3)", 21: "Composition 2 (N=3)", 22: "Composition 3 (N=4)",
+    23: "Composition 4 (N=4)", 24: "Composition 5 (N=5)", 25: "Composition 6 (N=5)",
+    26: "Composition 7 (N=6)", 27: "Composition 8 (N=6)", 28: "Composition 9 (N=3)",
+    29: "Composition 10 (N=3)",
+}
 
 SUITES = {
     "cec2014": {
@@ -222,8 +242,63 @@ SUITES = {
         ],
         "testText": "two-sided Wilcoxon rank-sum test on the trials, ordered by final error and then by FE<sub>term</sub>",
     },
+    "cec2026": {
+        "name": "CEC 2026",
+        "subtitle": "Bound-constrained single-objective optimization, accuracy and speed",
+        "functions": list(range(1, 30)),
+        "functionsLabel": "29 (F1–F29)",
+        "dims": [10, 30, 50, 100],
+        "runs": 25,
+        "maxfes": lambda dim: 10000 * dim,
+        "checkpoints": every_10d_checkpoints,
+        "chartPoints": 60,
+        "feTerm": False,
+        "uScore": True,
+        "stopsAtTarget": False,
+        "optimum": {f: 100 if f == 1 else 100 * (f + 1) for f in range(1, 30)},
+        "names": CEC2026_NAMES,
+        "groups": [
+            ("Unimodal", [1, 2]),
+            ("Simple multimodal", list(range(3, 10))),
+            ("Hybrid", list(range(10, 20))),
+            ("Composition", list(range(20, 30))),
+        ],
+        "tableNumbers": {},
+        "complexity": "The algorithm complexity (T1, T2)",
+        "lede": "collected under the competition rules: 25 runs per function, MaxFES = 10000·D, with every "
+                "run using its whole budget. The competition is at D = 30; D = 10, 50 and 100 follow the same "
+                "rules outside the competition, so they compare our two algorithms only.",
+        "setting": [
+            "The 29 functions of CEC 2017, numbered 1–29 as the competition numbers them, search range "
+            "[−100, 100]<sup>D</sup>, uniform random initialization.",
+            "25 independent runs per function and dimension, with a fixed base seed; both algorithms use "
+            "the same seed in the same run.",
+            "MaxFES = 10000·D. Every run uses the whole budget.",
+            "The best error is recorded every 10·D evaluations, 1000 values per run, as in the entries' "
+            "files and the organizers' slides. The rules say 1001, the first for the initial population, "
+            "which the entries' files do not have. Errors below 10<sup>−8</sup> count as zero.",
+            PARAMETERS,
+        ],
+        "notes": [
+            "F<sub>J</sub> is F<sub>1</sub> for J = 1 and CEC-2017 f<sub>J+1</sub> otherwise, since f<sub>2</sub> "
+            "was removed: F*<sub>1</sub> = 100 and F*<sub>J</sub> = 100·(J+1).",
+            "The U-score (section 1 of the criteria; Price, Kumar and Suganthan, 2023) has every trial meet every "
+            "other, including trials of the same algorithm. Accuracy gives a point to the lower final error. "
+            "Speed gives a point to the trial that first reached the higher of the two final errors, at the "
+            "resolution of the recording points. Ties give half a point each.",
+            "For the U-score, errors are rounded to 6 significant digits, the precision of the coarsest "
+            "entries' files. Equal errors decide many meetings, so without a common precision floating-point "
+            "noise would decide them. The rules do not state a rounding.",
+            "Wilcoxon compares final errors only, so it can disagree with the U-score, which also rewards speed.",
+            "At D = 10, about 4% of the L-SHADE runs on F29 stop at an error of 8.17578×10<sup>5</sup> (13 of 293 "
+            "runs with other seeds; 3 of the 25 reported here, for both algorithms) instead of about 400, in the "
+            "same place whatever the seed and build. These runs dominate the mean on F29, not the U-score or "
+            "the Wilcoxon test, which use only the order of the trials.",
+        ],
+        "testText": "two-sided Wilcoxon rank-sum test on the final errors",
+    },
 }
-ALIASES = {"cec14": "cec2014", "cec17": "cec2017", "cec22": "cec2022"}
+ALIASES = {"cec14": "cec2014", "cec17": "cec2017", "cec22": "cec2022", "cec26": "cec2026"}
 
 
 def read_matrix(results, name, function, dim):
@@ -268,8 +343,15 @@ def u_score(x, y):
     return sum((a < b) + 0.5 * (a == b) for a in x for b in y)
 
 
+def chart_indices(count, points):
+    """About `points` recording points, evenly spaced on the charts' log axis."""
+    return sorted({round(count ** (k / (points - 1))) - 1 for k in range(points)})
+
+
 def dimension_report(results, suite, dim, alpha):
     checkpoints = suite["checkpoints"](dim, suite["maxfes"](dim))
+    # Suites that record too many points to plot keep a subset for the charts.
+    kept = chart_indices(len(checkpoints), suite["chartPoints"]) if "chartPoints" in suite else None
     functions = []
     runs = None
     for function in available_functions(results, suite, dim):
@@ -281,7 +363,7 @@ def dimension_report(results, suite, dim, alpha):
             error_rows[name] = rows
             # CEC-2022 orders trials by final error, then by evaluations used.
             samples[name] = list(zip(rows[-1], fe_terms)) if fe_terms else rows[-1]
-            stats[name] = algorithm_stats(rows, fe_terms)
+            stats[name] = algorithm_stats([rows[i] for i in kept] if kept else rows, fe_terms)
         runs = len(error_rows[BASELINE][-1])
 
         p_value, rank_base, rank_cand = rank_sum_test(samples[BASELINE], samples[CANDIDATE])
@@ -290,13 +372,45 @@ def dimension_report(results, suite, dim, alpha):
         if suite["feTerm"]:
             entry["scores"] = {BASELINE: u_score(samples[BASELINE], samples[CANDIDATE]),
                                CANDIDATE: u_score(samples[CANDIDATE], samples[BASELINE])}
+        if suite.get("uScore"):
+            entry["parts"] = cec2026_function_score(error_rows)
+            entry["scores"] = {name: sum(entry["parts"][name]) for name in ALGORITHMS}
         functions.append(entry)
 
-    report = {"dim": dim, "maxfes": suite["maxfes"](dim), "checkpoints": checkpoints,
+    report = {"dim": dim, "maxfes": suite["maxfes"](dim),
+              "checkpoints": [checkpoints[i] for i in kept] if kept else checkpoints,
               "runs": runs, "functions": functions}
     if suite["feTerm"] and functions:
         report["score"] = cec2022_score(report)
+    if suite.get("uScore") and functions:
+        report["score"] = cec2026_score(report)
     return report
+
+
+def cec2026_function_score(error_rows):
+    """Accuracy and speed points of our two algorithms on one function, against each other."""
+    base = prepare_trials(error_rows[BASELINE])
+    cand = prepare_trials(error_rows[CANDIDATE])
+    accuracy, speed = meeting_points(cand, base)
+    meetings = len(cand) * len(base)
+    within = within_points(cand)
+    return {CANDIDATE: [accuracy + within, speed + within],
+            BASELINE: [meetings - accuracy + within, meetings - speed + within]}
+
+
+def cec2026_score(report):
+    parts = {name: [sum(e["parts"][name][i] for e in report["functions"]) for i in (0, 1)] for name in ALGORITHMS}
+    n_functions = len(report["functions"])
+    runs = report["runs"]
+    total = n_functions * 2 * runs * (2 * runs - 1)
+    return {
+        "label": f"U-score at D = {report['dim']}, the two algorithms alone",
+        "values": {name: sum(parts[name]) for name in ALGORITHMS},
+        "max": total,
+        "digits": 1,
+        "note": f"Accuracy + speed over {n_functions} functions: L-SHADE {parts[BASELINE][0]:,.1f} + {parts[BASELINE][1]:,.1f}, "
+                f"DM-L-SHADE {parts[CANDIDATE][0]:,.1f} + {parts[CANDIDATE][1]:,.1f}. The two scores add up to {total:,}.",
+    }
 
 
 def cec2022_score(report):
@@ -711,6 +825,185 @@ def cec2017_ranking(archive_path, results, dimensions, alpha):
     }
 
 
+# The BC-SOP entries of CEC 2026 with data in the organizers' SOP folder: folder,
+# file name, position among the 11 entries of the slides ("Comparison Slides.pdf")
+# and their per-function scores in those slides. RDE is in the folder but not in the
+# slides; rde26repro_sop is left out since its files are identical to rde26-sop.
+CEC2026_ENTRIES = [
+    ("RDE26", "rde26-sop", "RDE26_CEC26_SOP_F{}.txt", 1, "Sichen Tao et al."),
+    ("RDEx", "rdex-sop", "rdex_sop_cec2017_sop_29_F{}_Min_EV.csv", 3, "Sichen Tao, Yifei Yang, Ruihan Zhao et al."),
+    ("L-SRTDE", "LSRTDE", "LSRTDE_F{}_Min_EV.csv", 4, "Vladimir Stanovov, Eugene Semenkin"),
+    ("mLSHADE_LR", "mLSHADE_LR", "mLSHADE_LR_F{}_Min_EV.txt", 7, "Dikshit Chauhan, Anupam Trivedi, Shivani"),
+    ("jSOa", "jSOa", "jSOa_F{}_Min_EV.txt", 9, "Petr Bujok"),
+    ("IEACOP", "IEACOP", "IEACOP_F{}_Min_EV.txt", 10, "Tangherloni, Coelho, Buffa, Cazzaniga"),
+    ("RDE", "RDE", "RDE_F{}_Min_EV.txt", None, "In the organizers' folder, not in their ranking"),
+]
+CEC2026_ENTRIES_WITHOUT_DATA = ["DE-2LS", "rcmaes", "R-CMA-ES", "BlockEA", "ADSDE"]
+CEC2026_OFFICIAL = {
+    "RDE26": [
+        9756.5, 11379.5, 7082.0, 9560.0, 10411.5, 9090.0, 10089.5, 9646.0, 8231.0, 9640.5,
+        10388.5, 10016.0, 10790.5, 10796.5, 10300.5, 10930.0, 10003.0, 11025.0, 10917.0, 8897.5,
+        9806.0, 10218.5, 9549.0, 7596.5, 8608.5, 9702.0, 9748.0, 8051.0, 5187.5,
+    ],
+    "RDEx": [
+        8161.5, 9575.5, 7757.5, 8920.5, 7998.5, 7902.0, 8820.0, 8155.0, 7363.0, 9948.5,
+        10338.0, 10287.0, 9834.5, 10507.5, 9893.5, 9085.5, 10226.0, 10379.5, 9952.0, 8253.0,
+        7965.0, 9239.5, 8254.0, 11635.5, 9014.5, 11294.0, 9136.5, 8775.0, 9503.5,
+    ],
+    "L-SRTDE": [
+        7499.0, 8887.5, 5998.0, 9372.5, 9204.5, 6501.0, 8893.0, 10614.0, 7551.5, 10822.5,
+        9754.5, 9290.0, 8913.5, 8334.5, 10262.5, 8052.5, 7754.0, 10972.0, 3725.0, 8375.5,
+        7275.0, 8623.5, 8565.0, 6987.5, 7922.0, 9793.0, 8952.0, 12473.0, 12203.0,
+    ],
+    "mLSHADE_LR": [
+        6203.5, 5726.5, 8621.0, 5851.0, 9298.0, 4659.0, 5767.0, 9289.5, 3804.0, 5643.0,
+        2846.0, 5980.0, 5178.0, 4969.5, 5947.5, 5142.5, 4570.5, 4567.0, 5612.5, 4709.0,
+        9919.0, 5228.0, 5022.0, 7132.0, 3893.0, 4418.5, 6843.0, 4715.5, 5188.5,
+    ],
+    "jSOa": [
+        6124.0, 7037.0, 6053.0, 4728.0, 7941.5, 4003.0, 4567.0, 7270.5, 3545.0, 6305.5,
+        5528.0, 5519.0, 7162.5, 6261.0, 4703.5, 5112.5, 7554.0, 6267.5, 6207.5, 3518.5,
+        6350.0, 4813.5, 3511.0, 6302.0, 3663.0, 5681.5, 6784.0, 4339.5, 5784.0,
+    ],
+    "IEACOP": [
+        5403.0, 4999.0, 11704.0, 3094.5, 2776.0, 3669.0, 3708.5, 3417.0, 4651.5, 5827.0,
+        3583.0, 3747.5, 3155.0, 3661.0, 3120.5, 3693.0, 2468.0, 3456.5, 4413.0, 3548.5,
+        8725.0, 3510.5, 3085.5, 5601.5, 4514.0, 3604.0, 8165.5, 2622.0, 2076.5,
+    ],
+}
+
+
+def cec2026_points(trials, names, functions):
+    """points[f][a][b] = [accuracy, speed] of the trials of a against those of b."""
+    points = {}
+    for f in functions:
+        points[f] = {a: {} for a in names}
+        for i, a in enumerate(names):
+            for b in names[i + 1:]:
+                accuracy, speed = meeting_points(trials[a][f], trials[b][f])
+                meetings = len(trials[a][f]) * len(trials[b][f])
+                points[f][a][b] = [accuracy, speed]
+                points[f][b][a] = [meetings - accuracy, meetings - speed]
+    return points
+
+
+def cec2026_totals(points, names, functions, within):
+    """U-score of each algorithm per function among the given algorithms."""
+    return {a: {f: 2 * within + sum(sum(points[f][a][b]) for b in names if b != a) for f in functions} for a in names}
+
+
+def rank_correlation(x, y):
+    """Spearman correlation, ties averaged."""
+    def ranks(values):
+        ordered = sorted(range(len(values)), key=values.__getitem__)
+        result = [0.0] * len(values)
+        i = 0
+        while i < len(ordered):
+            j = i
+            while j + 1 < len(ordered) and values[ordered[j + 1]] == values[ordered[i]]:
+                j += 1
+            for k in range(i, j + 1):
+                result[ordered[k]] = (i + j) / 2
+            i = j + 1
+        return result
+    return statistics.correlation(ranks(x), ranks(y))
+
+
+def cec2026_ranking(participants, results, dimensions, alpha):
+    """U-score ranking at D = 30 of the entries with data, L-SHADE and DM-L-SHADE,
+    from the files in the organizers' SOP folder, checked against their slides."""
+    dim = 30
+    report = next((r for r in dimensions if r["dim"] == dim), None)
+    if report is None:
+        raise SystemExit("--participants needs the D = 30 results: the entries only ran at D = 30")
+    functions = SUITES["cec2026"]["functions"]
+    runs = SUITES["cec2026"]["runs"]
+
+    matrices = {}
+    irregular = []
+    for name, folder, file_name, _, _ in CEC2026_ENTRIES:
+        matrices[name] = {}
+        for f in functions:
+            rows = matrix_from_text((participants / folder / file_name.format(f)).read_text())
+            if any(len(row) != runs for row in rows):
+                irregular.append(f"{name} F{f} ({len(rows[0])} columns)")
+            matrices[name][f] = [row[:runs] for row in rows]
+    for name in ALGORITHMS:
+        matrices[name] = {f: read_matrix(results, name, f, dim) for f in functions}
+
+    entries = [{"name": e[0], "title": e[4], "official": e[3], "ours": False,
+                "officialTotal": sum(CEC2026_OFFICIAL[e[0]]) if e[0] in CEC2026_OFFICIAL else None}
+               for e in CEC2026_ENTRIES]
+    entries += [{"name": CANDIDATE, "title": "This work", "official": None, "officialTotal": None, "ours": True},
+                {"name": BASELINE, "title": "Baseline (Tanabe and Fukunaga, 2014)", "official": None,
+                 "officialTotal": None, "ours": True}]
+    names = [e["name"] for e in entries]
+    trials = {a: {f: prepare_trials(matrices[a][f]) for f in functions} for a in names}
+    points = cec2026_points(trials, names, functions)
+    within = runs * (runs - 1) / 2
+
+    wilcoxon = {}
+    for name in names:
+        if name == CANDIDATE:
+            continue
+        counts = {"+": 0, "=": 0, "-": 0}
+        for f in functions:
+            finals = [[0.0 if v < TARGET_ERROR else v for v in matrices[a][f][-1]] for a in (CANDIDATE, name)]
+            p_value, rank_ours, rank_theirs = rank_sum_test(finals[0], finals[1])
+            counts[("+" if rank_ours < rank_theirs else "-") if p_value < alpha else "="] += 1
+        wilcoxon[name] = counts
+
+    # Check against the slides. Their scores also include the five entries without
+    # data, each worth at most 2 * runs^2 points, so per function a score can only
+    # fall between what is recomputed here and that much above it.
+    official_names = [e[0] for e in CEC2026_ENTRIES if e[0] in CEC2026_OFFICIAL]
+    subset = cec2026_totals(points, official_names, functions, within)
+    room = len(CEC2026_ENTRIES_WITHOUT_DATA) * 2 * runs ** 2
+    impossible = [f"{a} F{f}" for a in official_names for f in functions
+                  if not subset[a][f] - 1e-6 <= CEC2026_OFFICIAL[a][f - 1] <= subset[a][f] + room + 1e-6]
+    subset_total = {a: sum(subset[a].values()) for a in official_names}
+    same_order = (sorted(official_names, key=lambda a: -subset_total[a]) ==
+                  sorted(official_names, key=lambda a: -sum(CEC2026_OFFICIAL[a])))
+    correlations = [rank_correlation([subset[a][f] for a in official_names],
+                                     [CEC2026_OFFICIAL[a][f - 1] for a in official_names]) for f in functions]
+
+    # How much the common precision matters: the same ranking on the values as stored.
+    raw_trials = {a: {f: prepare_trials(matrices[a][f], digits=None) for f in functions} for a in names}
+    raw_points = cec2026_points(raw_trials, names, functions)
+    def order(table):
+        totals = cec2026_totals(table, names, functions, within)
+        return sorted(names, key=lambda a: -sum(totals[a].values())), totals
+    rounded_order, _ = order(points)
+    raw_order, raw_totals = order(raw_points)
+
+    note = (f"The scoring code reproduces the accuracy and speed points of every trial in Fig. 1 of the criteria. "
+            f"Among the {len(official_names)} ranked entries with data, the order "
+            f"{'is the same as' if same_order else 'differs from'} the slides, with a mean per-function rank "
+            f"correlation of {statistics.mean(correlations):.2f} (lowest {min(correlations):.2f}). "
+            f"The slides' per-function scores could not be reproduced exactly: they include entries without data here, "
+            f"and {len(impossible)} of {len(official_names) * len(functions)} are outside the range these files allow "
+            f"({', '.join(impossible)}), so the organizers' numbers do not come from exactly these files under the "
+            f"rule of the criteria. On F8, for example, every run but those of IEACOP ends at zero error, and the L-SRTDE "
+            f"file reaches it later than RDE26 in every run, yet the slides place L-SRTDE first.")
+    note += (f" With the values as stored instead of {SIGNIFICANT_DIGITS} significant digits, the order is "
+             f"{'the same' if raw_order == rounded_order else ' > '.join(raw_order)}.")
+    if irregular:
+        note += f" Files with more columns than the {runs} runs, of which the first {runs} are used: {', '.join(irregular)}."
+
+    return {
+        "kind": "uscore",
+        "dim": dim,
+        "functions": functions,
+        "entries": entries,
+        "points": points,
+        "within": within,
+        "perPair": runs * runs,
+        "wilcoxon": wilcoxon,
+        "withoutData": CEC2026_ENTRIES_WITHOUT_DATA,
+        "note": note,
+    }
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--benchmark", required=True, choices=sorted(SUITES) + sorted(ALIASES),
@@ -722,8 +1015,9 @@ def main():
     parser.add_argument("--alpha", type=float, default=0.05,
                         help="significance level of the Wilcoxon test (default: 0.05)")
     parser.add_argument("--participants", type=Path,
-                        help="CEC-2022 only: the organizers' Results_and_Ranking/Comparison folder, to add "
-                             "the competition ranking with the 13 entries of 2022")
+                        help="the entries' results, to add the competition ranking: for CEC-2022 the organizers' "
+                             "Results_and_Ranking/Comparison folder, for CEC-2017 their "
+                             "Codes-of-Top-Methods-and-results.zip, for CEC-2026 their Results-Data/SOP_CEC2026/SOP folder")
     args = parser.parse_args()
 
     key = ALIASES.get(args.benchmark, args.benchmark)
@@ -751,14 +1045,19 @@ def main():
             data["ranking"] = cec2022_ranking(args.participants, results, dimensions)
         elif key == "cec2017":
             data["ranking"] = cec2017_ranking(args.participants, results, dimensions, args.alpha)
+        elif key == "cec2026":
+            data["ranking"] = cec2026_ranking(args.participants, results, dimensions, args.alpha)
         else:
-            parser.error("--participants is only available for cec2017 and cec2022")
+            parser.error("--participants is only available for cec2017, cec2022 and cec2026")
     elif key == "cec2022":
         print("note: pass --participants <Results_and_Ranking/Comparison> to include the ranking "
               "against the CEC-2022 entries")
     elif key == "cec2017":
         print("note: pass --participants <Codes-of-Top-Methods-and-results.zip> to include the ranking "
               "against the CEC-2017 entries")
+    elif key == "cec2026":
+        print("note: pass --participants <Results-Data/SOP_CEC2026/SOP> to include the ranking "
+              "against the CEC-2026 entries")
 
     output = args.output or results / "report.html"
     payload = json.dumps(data, separators=(",", ":")).replace("</", "<\\/")

@@ -1,3 +1,6 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>__REPORT_TITLE__</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -290,6 +293,9 @@ code { font-family: var(--font-data); font-size: 0.9em; }
     </div>
     <div class="table-frame">
       <table class="rank" id="rank-table"></table>
+    </div>
+    <div class="table-frame" hidden>
+      <table id="rank-fn-table"></table>
     </div>
     <div class="foot" id="rank-foot"></div>
   </section>
@@ -661,6 +667,8 @@ function renderFacts() {
     const s = entry.stats[name];
     const extra = SUITE.feTerm
       ? `<dt>Mean FEs used</dt><dd>${intFmt.format(Math.round(s.meanFes))}</dd><dt>Score</dt><dd>${entry.scores[name]}</dd>`
+      : SUITE.uScore
+      ? `<dt>U-score (accuracy + speed)</dt><dd>${entry.parts[name][0]} + ${entry.parts[name][1]}</dd>`
       : "";
     parts.push(`<div class="fact-alg">
       <div class="who"><i class="swatch ${SERIES[name]}"></i>${name}</div>
@@ -681,19 +689,20 @@ function renderFacts() {
 function renderCompare() {
   const rep = dimReport();
   const fe = SUITE.feTerm;
+  const scored = fe || SUITE.uScore;
   document.getElementById("cmp-desc").innerHTML =
     `Mean ${fe ? "error and mean evaluations used (FE<sub>term</sub>)" : "and standard deviation of the error at MaxFES"} over ${rep.runs} runs at D = ${rep.dim}. ` +
     `The lower mean error is set in full ink. The result is the ${SUITE.testText} at α = ${DATA.alpha}, read as DM-L-SHADE relative to L-SHADE` +
-    `${fe ? "; the last two columns are each algorithm's score on the function" : ""}. Select a row to plot its convergence.`;
+    `${scored ? "; the last two columns are each algorithm's score on the function" : ""}. Select a row to plot its convergence.`;
   const byFn = Object.fromEntries(rep.functions.map(e => [e.f, e]));
   const second = fe ? "mean FEs" : "std";
-  const nCols = fe ? 10 : 8;
+  const nCols = scored ? 10 : 8;
   let html = `<thead><tr>
     <th class="l">Func.</th><th class="l">Function</th>
     <th><span class="th-alg"><i class="swatch s1"></i>L-SHADE mean</span></th><th>${second}</th>
     <th><span class="th-alg"><i class="swatch s2"></i>DM-L-SHADE mean</span></th><th>${second}</th>
     <th>p-value</th><th class="c">Result</th>
-    ${fe ? `<th><span class="th-alg"><i class="swatch s1"></i>score</span></th><th><span class="th-alg"><i class="swatch s2"></i>score</span></th>` : ""}
+    ${scored ? `<th><span class="th-alg"><i class="swatch s1"></i>score</span></th><th><span class="th-alg"><i class="swatch s2"></i>score</span></th>` : ""}
     </tr></thead><tbody>`;
   for (const g of GROUPS) {
     const present = g.fns.filter(f => byFn[f]);
@@ -710,7 +719,7 @@ function renderCompare() {
         <td class="${bc}">${fmtE(b.mean)}</td><td class="std">${sec(b)}</td>
         <td class="${cc}">${fmtE(c.mean)}</td><td class="std">${sec(c)}</td>
         <td>${fmtP(e.p)}</td><td class="c">${resultChip(e.symbol, false)}</td>
-        ${fe ? `<td>${e.scores[BASE]}</td><td>${e.scores[CAND]}</td>` : ""}</tr>`;
+        ${scored ? `<td>${e.scores[BASE]}</td><td>${e.scores[CAND]}</td>` : ""}</tr>`;
     }
   }
   html += `</tbody>`;
@@ -771,6 +780,7 @@ function renderRanking() {
   if (!R) return;
   renderModeSwitch();
   if (R.kind === "score") return renderScoreRanking(R);
+  if (R.kind === "uscore") return renderUScoreRanking(R);
   const entrants = R.entries.filter(e => !e.ours);
   document.getElementById("rank-h").textContent = `Ranking against the ${entrants.length} entries of ${SUITE.name}`;
   document.getElementById("rank-desc").innerHTML =
@@ -885,6 +895,88 @@ function renderScoreRanking(R) {
     `LSHADE-cnEpSin sent only per-function statistics, which are enough for the score but not for the test. Errors below 10<sup>−8</sup> count as 0 for every algorithm.</p><p>${R.note}</p>`;
 }
 
+// CEC 2026: U-score (accuracy + speed points over all meetings of trials),
+// recomputed from the head-to-head points for whichever algorithms are included.
+function renderUScoreRanking(R) {
+  const entrants = R.entries.filter(e => !e.ours);
+  document.getElementById("rank-h").textContent = `Ranking against the ${entrants.length} entries with data, D = ${R.dim}`;
+  document.getElementById("rank-desc").innerHTML =
+    `The U-score of the criteria, recomputed among the algorithms selected from the organizers' files. The entries only ran at D = ${R.dim}, ` +
+    `so there is no ranking at other dimensions.${R.withoutData.join(", ")} also competed, but their results are not in the data, so positions here are not official ones.`;
+
+  const included = R.entries.filter(e => !e.ours || RANK_MODES[state.rankMode].ours.includes(e.name));
+  const names = included.map(e => e.name);
+  const rows = included.map(e => {
+    let accuracy = 0, speed = 0;
+    const perFn = {};
+    for (const f of R.functions) {
+      let a = R.within, s = R.within;
+      for (const b of names) {
+        if (b === e.name) continue;
+        a += R.points[f][e.name][b][0];
+        s += R.points[f][e.name][b][1];
+      }
+      accuracy += a; speed += s;
+      perFn[f] = a + s;
+    }
+    return { ...e, accuracy, speed, total: accuracy + speed, perFn, rankSum: 0, fnRank: {} };
+  });
+  for (const f of R.functions) {
+    const ordered = [...rows].sort((a, b) => b.perFn[f] - a.perFn[f]);
+    for (let i = 0; i < ordered.length;) {
+      let j = i;
+      while (j < ordered.length && ordered[j].perFn[f] === ordered[i].perFn[f]) j++;
+      for (let k = i; k < j; k++) {
+        ordered[k].fnRank[f] = (i + 1 + j) / 2;
+        ordered[k].rankSum += (i + 1 + j) / 2;
+      }
+      i = j;
+    }
+  }
+  rows.sort((a, b) => b.total - a.total);
+  const fmtPts = v => v.toLocaleString("en-US", { maximumFractionDigits: 1 });
+  const dmCell = r => {
+    if (r.name === CAND) return `<span class="std">—</span>`;
+    const c = R.wilcoxon[r.name];
+    return `<span class="wl"><b class="good-t">${c["+"]}</b>/<b>${c["="]}</b>/<b class="bad-t">${c["-"]}</b></span>`;
+  };
+  const dmShare = r => {
+    if (r.name === CAND) return `<span class="std">—</span>`;
+    let won = 0;
+    for (const f of R.functions) won += R.points[f][CAND][r.name][0] + R.points[f][CAND][r.name][1];
+    const share = won / (2 * R.perPair * R.functions.length);
+    return `<span class="h2h"><span class="track"><i style="width:${(share * 100).toFixed(1)}%"></i></span>${(share * 100).toFixed(1)}%</span>`;
+  };
+  let html = `<thead><tr><th class="l">Pos.</th><th class="l">Algorithm</th><th>Accuracy</th><th>Speed</th><th>U-score</th><th>Rank sum</th>` +
+    `<th>Official<br>position</th><th class="l">DM-L-SHADE points<br>against it</th><th class="l">DM-L-SHADE against it<br>+ / = / −</th></tr></thead><tbody>`;
+  rows.forEach((r, i) => {
+    const style = r.ours ? ` style="--ours: ${SERIES_VAR[r.name]}"` : "";
+    html += `<tr class="${r.ours ? "ours" : ""}"${style}>
+      <td class="pos">${i + 1}</td>
+      <td class="alg">${r.name}${r.title ? `<small>${r.title}</small>` : ""}</td>
+      <td>${fmtPts(r.accuracy)}</td><td>${fmtPts(r.speed)}</td><td>${fmtPts(r.total)}</td>
+      <td>${fmtPts(r.rankSum)}</td>
+      <td>${r.official ?? "—"}</td>
+      <td class="l">${dmShare(r)}</td>
+      <td class="l">${dmCell(r)}</td></tr>`;
+  });
+  document.getElementById("rank-table").innerHTML = html + `</tbody>`;
+
+  let fnHtml = `<caption>U-score per function among the algorithms selected, with the position on that function in grey</caption><thead><tr><th class="l">Func.</th>` +
+    rows.map(r => `<th>${r.name}</th>`).join("") + `</tr></thead><tbody>`;
+  for (const f of R.functions) {
+    fnHtml += `<tr><td class="l">F${f}</td>` + rows.map(r => `<td>${fmtPts(r.perFn[f])}<span class="dimrank">${r.fnRank[f]}</span></td>`).join("") + `</tr>`;
+  }
+  const fnTable = document.getElementById("rank-fn-table");
+  fnTable.innerHTML = fnHtml + `</tbody>`;
+  fnTable.parentElement.hidden = false;
+
+  document.getElementById("rank-foot").innerHTML =
+    `<p>The official position is among the 11 entries of the organizers' slides. The rank sum adds each algorithm's position on every function; lower is better. ` +
+    `"DM-L-SHADE points against it" is the share of accuracy and speed points DM-L-SHADE takes in its meetings with that algorithm; above 50% it has the edge. ` +
+    `The last column counts the functions where DM-L-SHADE is significantly better (+), not different (=) or worse (−), by the two-sided Wilcoxon rank-sum test on the final errors at α = ${DATA.alpha}.</p><p>${R.note}</p>`;
+}
+
 /* ---------- notes ---------- */
 function renderNotes() {
   const list = items => items.map(t => `<li>${t}</li>`).join("");
@@ -895,8 +987,9 @@ function renderNotes() {
   if (missing.length) todo.push(`<span class="pending">Results</span>${missing.map(d => d + "D").join(", ")} not collected yet.`);
   todo.push(`<span class="pending">Complexity</span>${SUITE.complexity} has not been measured.`);
   document.getElementById("todo").innerHTML = list(todo);
+  const plotted = DATA.dimensions[0].checkpoints.length;
   document.getElementById("conv-desc").innerHTML =
-    `Median error at the ${DATA.dimensions[0].checkpoints.length} recording points of the rules, with the band spanning the middle half of the runs. ` +
+    `Median error at ${SUITE.chartPoints ? `${plotted} of the recording points` : `the ${plotted} recording points of the rules`}, with the band spanning the middle half of the runs. ` +
     `Both axes are logarithmic. Errors below 10<sup>−8</sup> sit on the floor of the chart.`;
   document.getElementById("footer").innerHTML =
     `Generated by <code>experiments/report.py --benchmark ${DATA.benchmark}</code> from the result files of <code>experiments/${DATA.benchmark}_collect.py</code>. ` +

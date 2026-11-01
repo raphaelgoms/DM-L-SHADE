@@ -15,6 +15,7 @@
 #include "problems/cec14_problem.h"
 #include "problems/cec17_problem.h"
 #include "problems/cec22_problem.h"
+#include "problems/cec26_problem.h"
 #include "cvrplib/cvrplib_solver.h"
 #include "demos/sphere_demo.h"
 #include "demos/tsp_demo.h"
@@ -26,12 +27,13 @@ double *OShift,*M,*y,*z,*x_bound;
 int ini_flag=0,n_flag,func_flag,*SS;
 
 // Benchmark suite that --f indexes into.
-enum class BenchmarkType { CEC2014, CEC2017, CEC2022 };
+enum class BenchmarkType { CEC2014, CEC2017, CEC2022, CEC2026 };
 
 // Number of functions defined by each benchmark suite; bounds what --f and
 // the default (whole-suite) function range accept.
 static int benchmarkFunctionCount(BenchmarkType benchmark_type) {
-  return benchmark_type == BenchmarkType::CEC2022 ? 12 : 30;
+  if (benchmark_type == BenchmarkType::CEC2022) return 12;
+  return benchmark_type == BenchmarkType::CEC2026 ? 29 : 30;
 }
 
 // Whether a function number within 1..benchmarkFunctionCount() is part of the
@@ -51,7 +53,7 @@ static const double kCheckpointFractions[] = {
   0.01, 0.02, 0.03, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0
 };
 
-// MaxFES of each suite: 10000*D for CEC-2014 and CEC-2017; fixed per
+// MaxFES of each suite: 10000*D for CEC-2014, CEC-2017 and CEC-2026; fixed per
 // dimension for CEC-2022.
 static unsigned int benchmarkMaxEvaluations(BenchmarkType benchmark_type, int dimension) {
   if (benchmark_type == BenchmarkType::CEC2022) return dimension == 20 ? 1000000 : 200000;
@@ -59,11 +61,16 @@ static unsigned int benchmarkMaxEvaluations(BenchmarkType benchmark_type, int di
 }
 
 // Evaluation counts at which each suite's rules record the error: the
-// fractions above of MaxFES for CEC-2014 and CEC-2017, and floor(D^(k/5-3) * MaxFES),
-// k = 0..15, for CEC-2022.
+// fractions above of MaxFES for CEC-2014 and CEC-2017, floor(D^(k/5-3) * MaxFES),
+// k = 0..15, for CEC-2022, and every 10*D evaluations for CEC-2026 (the speed
+// part of its score needs the whole history).
 static vector<unsigned int> benchmarkCheckpoints(BenchmarkType benchmark_type, int dimension, unsigned int max_evaluations) {
   vector<unsigned int> checkpoints;
-  if (benchmark_type == BenchmarkType::CEC2022) {
+  if (benchmark_type == BenchmarkType::CEC2026) {
+    for (unsigned int evaluations = 10 * dimension; evaluations <= max_evaluations; evaluations += 10 * dimension) {
+      checkpoints.push_back(evaluations);
+    }
+  } else if (benchmark_type == BenchmarkType::CEC2022) {
     for (int k = 0; k <= 15; k++) {
       // The small offset keeps exact products (e.g. 10^-2 * 200000) from
       // flooring one below because of rounding in pow().
@@ -81,6 +88,8 @@ static shared_ptr<Problem> createBenchmarkProblem(BenchmarkType benchmark_type, 
   switch (benchmark_type) {
     case BenchmarkType::CEC2022:
       return make_shared<CEC22Problem>(function_number, problem_size);
+    case BenchmarkType::CEC2026:
+      return make_shared<CEC26Problem>(function_number, problem_size);
     case BenchmarkType::CEC2017:
       return make_shared<CEC17Problem>(function_number, problem_size);
     case BenchmarkType::CEC2014:
@@ -267,10 +276,12 @@ int main(int argc, char **argv) {
         benchmark_type = BenchmarkType::CEC2017;
       } else if (benchmark_name == "cec2022" || benchmark_name == "cec22") {
         benchmark_type = BenchmarkType::CEC2022;
+      } else if (benchmark_name == "cec2026" || benchmark_name == "cec26") {
+        benchmark_type = BenchmarkType::CEC2026;
       } else if (benchmark_name == "cvrplib") {
         cvrplib = true;
       } else {
-        cerr << "Invalid benchmark. Please use \"cec2014\", \"cec2017\", \"cec2022\" or \"cvrplib\"." << endl;
+        cerr << "Invalid benchmark. Please use \"cec2014\", \"cec2017\", \"cec2022\", \"cec2026\" or \"cvrplib\"." << endl;
         return 1;
       }
       i++;

@@ -19,6 +19,7 @@ Every benchmark follows the same three steps: **collect** the runs, **compare** 
 | CEC-2014 | [cec2014_collect.py](cec2014_collect.py) | [compare_cec2014_results.py](compare_cec2014_results.py) | [report.py](report.py) `--benchmark cec2014` |
 | CEC-2017 | [cec2017_collect.py](cec2017_collect.py) | [compare_cec2017_results.py](compare_cec2017_results.py) | [report.py](report.py) `--benchmark cec2017` |
 | CEC-2022 | [cec2022_collect.py](cec2022_collect.py) | [compare_cec2022_results.py](compare_cec2022_results.py) | [report.py](report.py) `--benchmark cec2022` |
+| CEC-2026 | [cec2026_collect.py](cec2026_collect.py) | [compare_cec2026_results.py](compare_cec2026_results.py) | [report.py](report.py) `--benchmark cec2026` |
 | CVRPLIB | [cvrplib_collect.py](cvrplib_collect.py) | `cvrplib_collect.py --summary-only` | [cvrplib_report.py](cvrplib_report.py) |
 
 Results go to `results/<suite>/<AlgorithmName>/`. The collect scripts keep files already on disk, so an interrupted collection resumes where it stopped (`--force` redoes them in the CEC scripts).
@@ -34,6 +35,7 @@ Run L-SHADE and DM-L-SHADE following each competition's rules and write the resu
 | CEC-2014 | 1-30 | 10, 30, 50, 100 | 51 | 10000·D | 14 × 51 |
 | CEC-2017 | 1, 3-30 | 10, 30, 50, 100 | 51 | 10000·D, stops at error < 1e-8 | 14 × 51 |
 | CEC-2022 | 1-12 | 10, 20 | 30 | 200,000 / 1,000,000, stops at error < 1e-8 | 17 × 30 (16 errors + FE_term) |
+| CEC-2026 | 1-29 (the CEC-2017 functions) | 30 in the competition; 10, 50 and 100 also run | 25 | 10000·D | 1000 × 25 (every 10·D evaluations) |
 
 The CEC-2022 script takes each run's seed from `data/cec22/Rand_Seeds.txt`, as the rules require; the others use `--seed` (default: current time).
 
@@ -43,6 +45,7 @@ Common options: `--algorithms`, `--dims`, `--functions`, `--runs`, `--seed`, `--
 python3 experiments/cec2014_collect.py --dims 10 30
 python3 experiments/cec2017_collect.py --dims 10 30 50 100 --jobs 8
 python3 experiments/cec2022_collect.py --dims 10 --functions 1 2 3 --zip
+python3 experiments/cec2026_collect.py --dims 10 30 --seed 2026
 ```
 
 ### Comparing: `compare_cec20XX_results.py`
@@ -52,20 +55,23 @@ Read the files written by the matching collect script and print, per function, t
 - **CEC-2014**: final error only (the rules define no score).
 - **CEC-2017**: also computes the suite's performance measure, Score1 + Score2 (section 2.3 of the rules), weighting D = 10, 30, 50, 100 by 0.1, 0.2, 0.3, 0.4.
 - **CEC-2022**: follows the suite's criterion, which rewards speed as well as accuracy: runs are ordered by final error and, among those that reached 1e-8, by the evaluations they used (FE_term). Prints each algorithm's score (U statistic) per function and in total.
+- **CEC-2026**: the U-score of the competition, accuracy plus speed points over every meeting of two trials, with errors rounded to 6 significant digits (the precision of the coarsest entries' files).
 
 ```
 python3 experiments/compare_cec2017_results.py
 python3 experiments/compare_cec2022_results.py --dims 10 --alpha 0.01
+python3 experiments/compare_cec2026_results.py --dims 10
 ```
 
 ### Report: `report.py`
 
-Builds a self-contained HTML page from the same result files, using the template [templates/report.html](templates/report.html): the results tables of each dimension, the Wilcoxon comparison, the suite's score (CEC-2017 and CEC-2022) and convergence curves (median and interquartile range of the error at the recording points) for every function. Dimensions are picked up from whatever files exist, so the report can be rebuilt as more results come in. It is written to `results/<suite>/report.html` by default.
+Builds a self-contained HTML page from the same result files, using the template [templates/report.html](templates/report.html): the results tables of each dimension, the Wilcoxon comparison, the suite's score (CEC-2017, CEC-2022 and CEC-2026) and convergence curves (median and interquartile range of the error at the recording points) for every function. Dimensions are picked up from whatever files exist, so the report can be rebuilt as more results come in. It is written to `results/<suite>/report.html` by default.
 
 `--participants` adds the ranking against the entries of the original competition:
 
 - **CEC-2022**: the organizers' `Results_and_Ranking/Comparison` folder (their spreadsheets); the ranking is recomputed with the rule of the organizers' `ranking.m`.
 - **CEC-2017**: the organizers' `Codes-of-Top-Methods-and-results.zip`, read directly (nested zip/tar.gz, and RAR through the system libarchive); adds the section 2.3 ranking and the Wilcoxon wins/ties/losses of DM-L-SHADE against each entry. This data reproduces the official Score 1 exactly, but Score 2 can differ by up to ~5 points.
+- **CEC-2026**: the organizers' `Results-Data/SOP_CEC2026/SOP` folder; adds the U-score ranking at D = 30, the only dimension the entries ran, with the Wilcoxon wins/ties/losses of DM-L-SHADE against each entry. The folder has 6 of the 11 ranked entries, plus RDE, which the organizers' slides do not rank; `rde26repro_sop` is skipped because its files are identical to `rde26-sop`.
 
 Per-suite details (function names and groups, recording points, notes) live in the `SUITES` dict at the top of the script.
 
@@ -73,6 +79,7 @@ Per-suite details (function names and groups, recording points, notes) live in t
 python3 experiments/report.py --benchmark cec2014
 python3 experiments/report.py --benchmark cec2017 --participants <Codes-of-Top-Methods-and-results.zip>
 python3 experiments/report.py --benchmark cec2022 --participants <CEC2022 download>/Results_and_Ranking/Comparison
+python3 experiments/report.py --benchmark cec2026 --participants <CEC2026 download>/Results-Data/SOP_CEC2026/SOP
 ```
 
 ## CVRPLIB
